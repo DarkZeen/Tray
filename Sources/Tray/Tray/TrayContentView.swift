@@ -1,0 +1,218 @@
+import AppKit
+import SwiftUI
+
+/// The tray itself (§5, §6, §14, §16, §19, §76, §77).
+///
+/// One surface, hanging from the top edge of the display, changing shape.
+/// There is no branch here that swaps one view for another when the tray
+/// opens — the container's width, height and corner radius animate, and the
+/// contents cross-fade inside it. That is what makes the open and close read
+/// as a single object rather than two views trading places (§16).
+struct TrayContentView: View {
+    let store: TrayStore
+    let presenter: TrayPresenter
+    let thumbnails: ThumbnailProvider
+    let settings: SettingsStore
+    let geometry: ScreenGeometry
+
+    let onRemove: (TrayItem) -> Void
+    let onReveal: (TrayItem) -> Void
+    let onQuickLook: (TrayItem) -> Void
+    let onItemDragBegan: (TrayItem) -> Void
+    let onItemDragEnded: (TrayItem, Bool) -> Void
+
+    /// Reported upward so the AppKit layer can keep its hit regions exactly on
+    /// the pixels the user can see (§74).
+    let onShapeChange: (TrayShape) -> Void
+
+    var body: some View {
+        VStack(spacing: 0) {
+            tray
+            Spacer(minLength: 0)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        // The tray keeps its own appearance in both system appearances (§49).
+        .environment(\.colorScheme, .dark)
+    }
+
+    // MARK: - The surface
+
+    private var tray: some View {
+        ZStack {
+            // Each layer is pinned to the tray's exact size. Without this the
+            // ZStack takes the size of its *largest* child — the open shelf —
+            // and the closed layer's `maxHeight: .infinity` then resolves
+            // against that instead of against the closed height, which lands
+            // the item dots below the tray entirely.
+            collapsedContents
+                .frame(width: shape.width, height: shape.height)
+                .opacity(isOpen ? 0 : 1)
+
+            expandedContents
+                .frame(width: shape.width, height: shape.height)
+                .opacity(isOpen ? 1 : 0)
+        }
+        .frame(width: shape.width, height: shape.height)
+        // Nothing escapes the surface. As well as being correct at rest, this
+        // is what makes the collapse read as the shelf closing over its
+        // contents rather than the contents sliding out of a shrinking box.
+        .clipShape(TraySurface(cornerRadius: shape.cornerRadius))
+        .traySurface(
+            cornerRadius: shape.cornerRadius,
+            isEmphasised: presenter.state.isDropTargetActive
+        )
+        // Scaled from the top, because that is where the object is attached.
+        // Scaling from the centre would lift it off the edge of the screen.
+        .scaleEffect(presenter.state.containerScale, anchor: .top)
+        .animation(containerAnimation, value: shape)
+        .animation(TrayAnimation.hover, value: presenter.state)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(accessibilityLabel)
+        .onChange(of: shape, initial: true) { _, new in onShapeChange(new) }
+    }
+
+    private var isOpen: Bool { presenter.state.isOpen }
+
+    private var shape: TrayShape {
+        if isOpen {
+            return .expanded(itemCount: store.count, screenWidth: geometry.frame.width)
+        }
+        return .collapsed(notchSize: geometry.notchSize, isEmpty: store.isEmpty)
+    }
+
+    /// Opening and closing get different springs: leaving should feel calmer
+    /// than arriving (§45).
+    private var containerAnimation: Animation {
+        isOpen ? TrayAnimation.expand : TrayAnimation.collapse
+    }
+
+    // MARK: - Closed
+
+    /// Closed, the tray says only whether it is holding anything (§76, §77).
+    @ViewBuilder
+    private var collapsedContents: some View {
+        if !store.isEmpty {
+            HStack(spacing: 4) {
+                ForEach(0..<min(store.count, 3), id: \.self) { _ in
+                    Circle()
+                        .fill(.white.opacity(0.55))
+                        .frame(width: 4, height: 4)
+                }
+                if store.count > 3 {
+                    Text("\(store.count)")
+                        .font(.system(size: 9, weight: .semibold, design: .rounded))
+                        .foregroundStyle(.white.opacity(0.55))
+                        .padding(.leading, 1)
+                }
+            }
+            .padding(.bottom, geometry.hasNotch ? 4 : 0)
+            .frame(maxHeight: .infinity, alignment: geometry.hasNotch ? .bottom : .center)
+        }
+    }
+
+    // MARK: - Open
+
+    @ViewBuilder
+    private var expandedContents: some View {
+        if store.isEmpty {
+            emptyPrompt
+        } else {
+            shelf
+        }
+    }
+
+    /// No permanent onboarding screen (§5). The prompt exists only while the
+    /// tray is open and empty, and it changes to an instruction only once a
+    /// drag is actually overhead.
+    private var emptyPrompt: some View {
+        VStack(spacing: 6) {
+            Image(systemName: presenter.state.isDropTargetActive
+                ? "arrow.down.circle.fill"
+                : "tray")
+                .font(.system(size: 16, weight: .regular))
+                .foregroundStyle(.white.opacity(presenter.state.isDropTargetActive ? 0.85 : 0.4))
+                .contentTransition(.symbolEffect(.replace))
+
+            Text(presenter.state.isDropTargetActive ? "Release to stash" : "Drop files here")
+                .font(.system(size: 11, weight: .medium))
+                .foregroundStyle(.white.opacity(presenter.state.isDropTargetActive ? 0.8 : 0.42))
+        }
+        .animation(TrayAnimation.hover, value: presenter.state)
+    }
+
+    /// A horizontal shelf, never a grid (§19).
+    ///
+    /// The scroll view appears only once the items stop fitting (§20). While
+    /// everything fits — which is nearly always — the row is laid out plainly,
+    /// so there is no scroll offset to end up in the wrong place and no chance
+    /// of a stray trackpad gesture nudging the shelf sideways.
+    @ViewBuilder
+    private var shelf: some View {
+        if TrayShape.fits(itemCount: store.count, screenWidth: geometry.frame.width) {
+            itemRow
+        } else {
+            ScrollView(.horizontal) {
+                itemRow
+            }
+            .scrollIndicators(.never)
+            .scrollBounceBehavior(.basedOnSize)
+            // Content dissolves at the edges instead of being cut off mid-icon.
+            // A hard edge reads as a rendering mistake; a fade reads as "there
+            // is more this way".
+            .mask(scrollEdgeMask)
+        }
+    }
+
+    private var itemRow: some View {
+        HStack(spacing: TrayMetrics.itemSpacing) {
+            ForEach(store.items) { item in
+                TrayItemView(
+                    item: item,
+                    thumbnails: thumbnails,
+                    showsFilename: settings.showsFileNames,
+                    isBeingDragged: presenter.state.draggedItemID == item.id,
+                    onDragBegan: { onItemDragBegan(item) },
+                    onDragEnded: { onItemDragEnded(item, $0) },
+                    onRemove: { onRemove(item) },
+                    onReveal: { onReveal(item) },
+                    onQuickLook: { onQuickLook(item) }
+                )
+                .transition(itemTransition)
+            }
+        }
+        .padding(.horizontal, TrayMetrics.horizontalPadding)
+        .padding(.vertical, TrayMetrics.verticalPadding)
+        .animation(TrayAnimation.itemShift, value: store.items.map(\.id))
+    }
+
+    private var scrollEdgeMask: some View {
+        LinearGradient(
+            stops: [
+                .init(color: .clear, location: 0),
+                .init(color: .black, location: TrayMetrics.scrollFade / shape.width),
+                .init(color: .black, location: 1 - TrayMetrics.scrollFade / shape.width),
+                .init(color: .clear, location: 1),
+            ],
+            startPoint: .leading,
+            endPoint: .trailing
+        )
+    }
+
+    /// Items arrive with a little more energy than the container and leave
+    /// quickly and quietly (§45, §46). No fireworks.
+    private var itemTransition: AnyTransition {
+        if TrayAnimation.prefersReducedMotion {
+            return .opacity
+        }
+        return .asymmetric(
+            insertion: .scale(scale: 0.72).combined(with: .opacity),
+            removal: .scale(scale: TrayScale.itemDeparting).combined(with: .opacity)
+        )
+    }
+
+    private var accessibilityLabel: String {
+        store.isEmpty
+            ? "Tray, empty"
+            : "Tray containing \(store.count) item\(store.count == 1 ? "" : "s")"
+    }
+}

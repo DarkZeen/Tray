@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024" role="img" aria-label="Tray">
+  <defs>
+    <linearGradient id="plate" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#333740"/>
+      <stop offset="1" stop-color="#131418"/>
+    </linearGradient>
+  </defs>
+  <rect x="100" y="100" width="824" height="824" rx="185" ry="185" fill="url(#plate)"/>
+  <rect x="103" y="103" width="818" height="818" rx="182" ry="182" fill="none" stroke="#ffffff" stroke-opacity="0.13" stroke-width="6"/>
+  <!-- An open-topped tray. Open at the top is what separates a tray from a box. -->
+  <path d="M 238 374 L 238 542 A 128 128 0 0 0 366 670 L 658 670 A 128 128 0 0 0 786 542 L 786 374" fill="none" stroke="#ffffff" stroke-opacity="0.95" stroke-width="54" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- One thing resting in it, standing proud of the walls. -->
+  <rect x="423" y="463" width="178" height="158" rx="48" ry="48" fill="#ffffff" fill-opacity="0.95"/>
+</svg>

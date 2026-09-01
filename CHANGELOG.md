@@ -1,0 +1,40 @@
+# Changelog
+
+All notable changes to Tray are recorded here. The format follows
+[Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow
+[Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [Unreleased]
+
+## [0.1.0]
+
+First release. The scope is deliberately locked: a shelf at the top of the
+screen that files go into and come back out of, and nothing else.
+
+### Added
+
+- A tray anchored to the top centre of the screen, measured from the display's
+  own safe area rather than hardcoded, so notched MacBooks, external monitors
+  and scaling changes all place it correctly.
+- Drag files and folders in from anywhere, several at once. The tray keeps a
+  reference; the originals are never moved, copied or modified.
+- Drag items back out into Finder, Save dialogs, upload fields, or any other
+  destination that accepts a file, as a real macOS drag session.
+- File icons immediately, replaced by Quick Look thumbnails as they arrive.
+- One tray per connected display, following monitors as they come and go.
+- Secondary click for Remove from Tray, Reveal in Finder and Quick Look.
+- A menu bar item with Open Tray, Launch at Login, Settings and Quit.
+- Settings for activation (hover, drag, or both), auto-collapse delay, file
+  names, the menu bar icon and Launch at Login.
+- Launch at Login through `SMAppService`, with the three states that actually
+  fail — read-only location, approval revoked in System Settings, unstable
+  signature — detected and explained instead of silently ignored.
+- Full-screen and Spaces support, without ever taking focus from the app in
+  front.
+- Reduced motion and reduced transparency support, VoiceOver labels, and a
+  dark surface that holds up in both light and dark appearance.
+- A signed, notarized disk image built by a GitHub Actions workflow, and a
+  three-tier local signing ladder that needs no Apple Developer account.
+
+[Unreleased]: https://github.com/DarkZeen/Tray/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/DarkZeen/Tray/releases/tag/v0.1.0

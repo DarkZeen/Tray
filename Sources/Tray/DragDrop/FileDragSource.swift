@@ -1,0 +1,178 @@
+import AppKit
+import SwiftUI
+
+/// The AppKit interaction layer for a single tray item (§21, §27, §81).
+///
+/// Dragging out has to be a *real* `NSDraggingSession`, not a simulated one —
+/// that is the difference between a file that lands in Finder, an upload
+/// field or a Save dialog, and an animation that looks like it did. It also
+/// has to report its outcome, which is why this is AppKit rather than
+/// SwiftUI's `.onDrag`: the tray removes an item on a successful drop and
+/// springs it back on a cancel (§22), and only a drag *source* is told which
+/// happened.
+///
+/// Since this view is already sitting over the item to catch the drag, it owns
+/// the rest of the item's mouse behaviour too — hover, secondary click, and
+/// double click — rather than fighting SwiftUI over the same events.
+final class ItemInteractionView: NSView {
+    var item: TrayItem
+    var onHoverChanged: (Bool) -> Void = { _ in }
+    var onDragBegan: () -> Void = {}
+    var onDragEnded: (Bool) -> Void = { _ in }
+    var onOpenQuickLook: () -> Void = {}
+    var menuBuilder: () -> NSMenu? = { nil }
+    var dragImage: () -> NSImage? = { nil }
+
+    private var trackingArea: NSTrackingArea?
+    private var mouseDownEvent: NSEvent?
+
+    /// How far the pointer must travel with the button down before this counts
+    /// as a drag rather than a click (§10 of the fluid-interface rules: a small
+    /// hysteresis, then 1:1 tracking).
+    private static let dragThreshold: CGFloat = 3
+
+    init(item: TrayItem) {
+        self.item = item
+        super.init(frame: .zero)
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) { fatalError("not used") }
+
+    // MARK: - Hover
+
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        if let trackingArea { removeTrackingArea(trackingArea) }
+        let area = NSTrackingArea(
+            rect: bounds,
+            options: [.mouseEnteredAndExited, .activeAlways, .inVisibleRect],
+            owner: self
+        )
+        addTrackingArea(area)
+        trackingArea = area
+    }
+
+    override func mouseEntered(with event: NSEvent) { onHoverChanged(true) }
+    override func mouseExited(with event: NSEvent) { onHoverChanged(false) }
+
+    // MARK: - Drag out
+
+    /// Lets the first click on an inactive tray both focus nothing and still
+    /// start a drag, so the user never has to click twice (§28: the app is
+    /// never activated, so every click here is a "first" one).
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+
+    override func mouseDown(with event: NSEvent) {
+        mouseDownEvent = event
+    }
+
+    override func mouseDragged(with event: NSEvent) {
+        guard let start = mouseDownEvent else { return }
+        let travelled = hypot(
+            event.locationInWindow.x - start.locationInWindow.x,
+            event.locationInWindow.y - start.locationInWindow.y
+        )
+        guard travelled >= Self.dragThreshold else { return }
+        mouseDownEvent = nil
+        beginDrag(with: start)
+    }
+
+    override func mouseUp(with event: NSEvent) {
+        mouseDownEvent = nil
+        if event.clickCount == 2 { onOpenQuickLook() }
+    }
+
+    private func beginDrag(with event: NSEvent) {
+        guard item.isAvailable else { return }
+
+        // `NSURL` is the pasteboard writer every file destination on macOS
+        // understands. The tray writes a reference to the original file; it
+        // never has a copy to offer (§3, §38).
+        let draggingItem = NSDraggingItem(pasteboardWriter: item.url as NSURL)
+
+        if let image = dragImage() {
+            let size = image.size
+            let frame = NSRect(
+                x: bounds.midX - size.width / 2,
+                y: bounds.midY - size.height / 2,
+                width: size.width,
+                height: size.height
+            )
+            draggingItem.setDraggingFrame(frame, contents: image)
+        } else {
+            draggingItem.setDraggingFrame(bounds, contents: nil)
+        }
+
+        onDragBegan()
+        beginDraggingSession(with: [draggingItem], event: event, source: self)
+    }
+
+    // MARK: - Context menu (§23)
+
+    override func rightMouseDown(with event: NSEvent) {
+        guard let menu = menuBuilder() else { return }
+        NSMenu.popUpContextMenu(menu, with: event, for: self)
+    }
+
+    override func menu(for event: NSEvent) -> NSMenu? { menuBuilder() }
+}
+
+extension ItemInteractionView: NSDraggingSource {
+    func draggingSession(
+        _ session: NSDraggingSession,
+        sourceOperationMaskFor context: NSDraggingContext
+    ) -> NSDragOperation {
+        switch context {
+        case .outsideApplication:
+            // Copy only. A `.move` would let a destination relocate the user's
+            // original file, and the tray promised not to touch it (§3).
+            .copy
+        case .withinApplication:
+            // Reordering inside the shelf is handled by the tray itself, not
+            // by a pasteboard round trip.
+            []
+        @unknown default:
+            .copy
+        }
+    }
+
+    func draggingSession(
+        _ session: NSDraggingSession,
+        endedAt screenPoint: NSPoint,
+        operation: NSDragOperation
+    ) {
+        onDragEnded(operation != [])
+    }
+}
+
+/// Hosts `ItemInteractionView` over a SwiftUI item.
+struct ItemInteractionLayer: NSViewRepresentable {
+    let item: TrayItem
+    let onHoverChanged: (Bool) -> Void
+    let onDragBegan: () -> Void
+    let onDragEnded: (Bool) -> Void
+    let onOpenQuickLook: () -> Void
+    let menuBuilder: () -> NSMenu?
+    let dragImage: () -> NSImage?
+
+    func makeNSView(context: Context) -> ItemInteractionView {
+        let view = ItemInteractionView(item: item)
+        apply(to: view)
+        return view
+    }
+
+    func updateNSView(_ view: ItemInteractionView, context: Context) {
+        view.item = item
+        apply(to: view)
+    }
+
+    private func apply(to view: ItemInteractionView) {
+        view.onHoverChanged = onHoverChanged
+        view.onDragBegan = onDragBegan
+        view.onDragEnded = onDragEnded
+        view.onOpenQuickLook = onOpenQuickLook
+        view.menuBuilder = menuBuilder
+        view.dragImage = dragImage
+    }
+}

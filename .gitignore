@@ -1,0 +1,16 @@
+# Build products
+.build/
+.swiftpm/
+build/
+dist/
+*.dmg
+*.xcodeproj
+
+# macOS
+.DS_Store
+
+# Local agent tooling — not part of the app
+.agents/
+.claude/
+.impeccable/
+skills-lock.json
