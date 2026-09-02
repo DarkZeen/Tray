@@ -55,7 +55,8 @@ enum TrayMetrics {
 
     /// The dashed outline some people want around the drop area, inset from the
     /// surface edge.
-    static let dropOutlineInset: CGFloat = 7
+    static let defaultDropOutlineInset: CGFloat = 7
+    static let dropOutlineInsetRange: ClosedRange<Double> = 0...30
     static let dropOutlineDash: CGFloat = 5
     static let dropOutlineGap: CGFloat = 4
 

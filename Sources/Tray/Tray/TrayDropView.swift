@@ -25,7 +25,9 @@ final class TrayDropView: NSView {
             guard contentRect != oldValue else { return }
             needsLayout = true
             window?.invalidateCursorRects(for: self)
-            updateTrackingAreas()
+            // The region moved under a stationary pointer, so what was inside
+            // may now be outside without the mouse having gone anywhere.
+            revalidatePointerRegion()
         }
     }
 
@@ -34,7 +36,7 @@ final class TrayDropView: NSView {
     var isOpen = false {
         didSet {
             guard isOpen != oldValue else { return }
-            updateTrackingAreas()
+            revalidatePointerRegion()
         }
     }
 
@@ -54,11 +56,17 @@ final class TrayDropView: NSView {
     var onPointerExit: () -> Void = {}
     var onDragEnter: () -> Void = {}
     var onDragExit: () -> Void = {}
+    var onDragSessionEnded: () -> Void = {}
     var onDragApproach: () -> Void = {}
     var canAcceptDrag: (any NSDraggingInfo) -> Bool = { _ in false }
     var performDrop: (any NSDraggingInfo) -> Bool = { _ in false }
 
     private var trackingArea: NSTrackingArea?
+
+    /// Whether the pointer is currently within the region that counts as "on
+    /// the tray". Tracked here rather than inferred from AppKit's enter and
+    /// exit events, for the reason spelled out on `updateTrackingAreas`.
+    private var pointerIsInsideRegion = false
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
@@ -186,35 +194,64 @@ final class TrayDropView: NSView {
 
     // MARK: - Hover tracking
 
+    /// One tracking area covering the whole panel, which is never rebuilt.
+    ///
+    /// It used to be sized to the hover region and rebuilt every time the tray
+    /// changed shape. That is what made the shelf occasionally stick open: a
+    /// rebuild makes AppKit re-evaluate containment and emit enter/exit events
+    /// that do not correspond to any pointer movement, and once an *enter* was
+    /// missed that way, the matching exit never arrived either — so nothing
+    /// ever told the tray the pointer had gone.
+    ///
+    /// Now the area is constant and `.inVisibleRect`, so AppKit's bookkeeping
+    /// cannot drift, and whether the pointer is on the tray is decided here
+    /// from its actual position.
     override func updateTrackingAreas() {
         super.updateTrackingAreas()
         if let trackingArea { removeTrackingArea(trackingArea) }
         let area = NSTrackingArea(
-            rect: hoverActivationRect,
-            options: [.mouseEnteredAndExited, .activeAlways],
+            rect: .zero,
+            options: [.mouseEnteredAndExited, .mouseMoved, .activeAlways, .inVisibleRect],
             owner: self
         )
         addTrackingArea(area)
         trackingArea = area
     }
 
-    // Rebuilding a tracking area — which happens every time the tray changes
-    // shape — makes AppKit re-evaluate containment and fire enter/exit events
-    // that do not correspond to the pointer having moved anywhere. Both are
-    // confirmed against the live region before being believed. Without this,
-    // the tray opens by itself when nothing went near it, which is precisely
-    // the accidental activation §12 warns about.
-
     override func mouseEntered(with event: NSEvent) {
-        let local = convert(event.locationInWindow, from: nil)
-        guard hoverActivationRect.contains(local) else { return }
-        onPointerEnter()
+        updatePointerRegion(with: event)
+    }
+
+    override func mouseMoved(with event: NSEvent) {
+        updatePointerRegion(with: event)
     }
 
     override func mouseExited(with event: NSEvent) {
+        // Left the panel altogether, so it is outside every region in it.
+        setPointerInside(false)
+    }
+
+    private func updatePointerRegion(with event: NSEvent) {
         let local = convert(event.locationInWindow, from: nil)
-        guard !hoverActivationRect.contains(local) else { return }
-        onPointerExit()
+        setPointerInside(hoverActivationRect.contains(local))
+    }
+
+    /// Re-checks where the pointer is without waiting for it to move.
+    ///
+    /// A single query of the current location, not a poll: it runs when the
+    /// tray changes shape, which is exactly when a stationary pointer can find
+    /// itself on the other side of the boundary.
+    private func revalidatePointerRegion() {
+        guard let window else { return }
+        let inWindow = window.convertPoint(fromScreen: NSEvent.mouseLocation)
+        let local = convert(inWindow, from: nil)
+        setPointerInside(bounds.contains(local) && hoverActivationRect.contains(local))
+    }
+
+    private func setPointerInside(_ inside: Bool) {
+        guard inside != pointerIsInsideRegion else { return }
+        pointerIsInsideRegion = inside
+        inside ? onPointerEnter() : onPointerExit()
     }
 
     // MARK: - Drag destination (§13, §14, §38)
@@ -233,6 +270,16 @@ final class TrayDropView: NSView {
 
     override func draggingExited(_ sender: (any NSDraggingInfo)?) {
         onDragExit()
+    }
+
+    /// The other way a drag can stop mattering to us.
+    ///
+    /// `draggingExited` is not guaranteed for every way a session can end — a
+    /// drag cancelled with Escape, or one that finishes elsewhere, may not
+    /// produce one. Without this the tray was left believing a drag was still
+    /// approaching, and a tray that thinks a drag is overhead refuses to close.
+    override func draggingEnded(_ sender: any NSDraggingInfo) {
+        onDragSessionEnded()
     }
 
     override func prepareForDragOperation(_ sender: any NSDraggingInfo) -> Bool {

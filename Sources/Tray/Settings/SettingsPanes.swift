@@ -166,6 +166,23 @@ struct TrayPane: View {
                 SettingsRowDivider()
 
                 SettingsRow(
+                    icon: "arrow.down.to.line",
+                    title: "Open after a drop",
+                    description: settings.expandsAfterDrop
+                        ? "The shelf stays up for a moment so you can see what landed."
+                        : "The shelf closes as soon as the drop is done."
+                ) {
+                    Toggle("", isOn: Binding(
+                        get: { settings.expandsAfterDrop },
+                        set: { settings.expandsAfterDrop = $0 }
+                    ))
+                    .toggleStyle(.switch)
+                    .controlSize(.small)
+                }
+
+                SettingsRowDivider()
+
+                SettingsRow(
                     icon: "hand.tap",
                     title: "Stay open after a click",
                     description: settings.staysOpenAfterClick
@@ -280,6 +297,33 @@ struct TrayPane: View {
                     ))
                     .toggleStyle(.switch)
                     .controlSize(.small)
+                }
+
+                if settings.showsDropOutline {
+                    SettingsRowDivider()
+
+                    SettingsRow(
+                        icon: "arrow.down.right.and.arrow.up.left",
+                        title: "Outline inset",
+                        description: "How far inside the edge the outline sits."
+                    ) {
+                        HStack(spacing: 8) {
+                            Slider(
+                                value: Binding(
+                                    get: { settings.dropOutlineInset },
+                                    set: { settings.dropOutlineInset = $0 }
+                                ),
+                                in: TrayMetrics.dropOutlineInsetRange
+                            )
+                            .frame(width: 110)
+
+                            Text("\(Int(settings.dropOutlineInset.rounded()))pt")
+                                .font(.system(size: 11))
+                                .foregroundStyle(.secondary)
+                                .monospacedDigit()
+                                .frame(width: 34, alignment: .trailing)
+                        }
+                    }
                 }
             }
         }

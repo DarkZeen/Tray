@@ -42,6 +42,10 @@ final class TrayPresenter {
     /// only reaches it while the pointer is on it.
     var holdsOpenWhenClicked: () -> Bool = { true }
 
+    /// Whether the shelf stays open to show what just landed, or closes as soon
+    /// as the drop is done.
+    var expandsAfterDrop: () -> Bool = { true }
+
     private var pointerIsInside = false
     private var openTask: Task<Void, Never>?
     private var collapseTask: Task<Void, Never>?
@@ -134,17 +138,34 @@ final class TrayPresenter {
         }
     }
 
-    /// Something was dropped. The shelf stays open so the user can see what
-    /// landed and go get the next thing (§4, §17).
+    /// Something was dropped (§4, §17).
     func dropCompleted() {
         isDragApproaching = false
         transition(to: .expanded)
-        if !pointerIsInside {
+        guard !pointerIsInside else { return }
+
+        if expandsAfterDrop() {
             // Longer than an ordinary close: something just landed and the user
             // deserves a moment to see what it was, however impatient the
             // auto-collapse setting is.
             scheduleCollapse(after: max(collapseDelay(), TrayAnimation.collapseDelay) * 2)
+        } else {
+            scheduleCollapse(after: collapseDelay())
         }
+    }
+
+    /// A drag session ended, however it ended.
+    ///
+    /// `draggingExited` is not guaranteed — a drag cancelled with Escape, or
+    /// one that finishes somewhere else, may never produce one — and a tray
+    /// that still believes a drag is overhead refuses to close. A drop clears
+    /// the flag first, so this does nothing after a successful one and cannot
+    /// cut short the moment §4 gives the user to see what landed.
+    func dragSessionEnded() {
+        guard isDragApproaching else { return }
+        isDragApproaching = false
+        guard state.isOpen, !pointerIsInside else { return }
+        scheduleCollapse(after: collapseDelay())
     }
 
     // MARK: - Dragging items out (§21, §22)

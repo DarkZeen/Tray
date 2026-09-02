@@ -97,8 +97,10 @@ struct TraySurfaceStyle: ViewModifier {
     var topFlare: CGFloat
     /// Slightly stronger blur while a drag is over the target (§14, step 5).
     var isEmphasised: Bool
-    /// The optional dashed outline marking the drop area.
+    /// The optional dashed outline marking the drop area, and how far inside
+    /// the surface edge it sits.
     var showsDropOutline: Bool
+    var dropOutlineInset: CGFloat = TrayMetrics.defaultDropOutlineInset
     /// Space at the top the camera housing covers. The outline starts below it,
     /// so the whole border is visible rather than having its top run disappear
     /// into the notch.
@@ -120,7 +122,9 @@ struct TraySurfaceStyle: ViewModifier {
     /// made it look unfinished.
     private var outlineShape: RoundedRectangle {
         RoundedRectangle(
-            cornerRadius: max(cornerRadius - TrayMetrics.dropOutlineInset, 6),
+            // The radius shrinks with the inset so the outline stays concentric
+            // with the surface rather than getting rounder as it moves inwards.
+            cornerRadius: max(cornerRadius - dropOutlineInset, 6),
             style: .continuous
         )
     }
@@ -165,7 +169,7 @@ struct TraySurfaceStyle: ViewModifier {
                                 dash: [TrayMetrics.dropOutlineDash, TrayMetrics.dropOutlineGap]
                             )
                         )
-                        .padding(TrayMetrics.dropOutlineInset)
+                        .padding(dropOutlineInset)
                         .padding(.top, notchInset)
                 }
             }
@@ -181,6 +185,7 @@ extension View {
         topFlare: CGFloat = 0,
         isEmphasised: Bool = false,
         showsDropOutline: Bool = false,
+        dropOutlineInset: CGFloat = TrayMetrics.defaultDropOutlineInset,
         notchInset: CGFloat = 0
     ) -> some View {
         modifier(
@@ -189,6 +194,7 @@ extension View {
                 topFlare: topFlare,
                 isEmphasised: isEmphasised,
                 showsDropOutline: showsDropOutline,
+                dropOutlineInset: dropOutlineInset,
                 notchInset: notchInset
             )
         )

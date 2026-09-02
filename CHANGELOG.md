@@ -8,6 +8,9 @@ All notable changes to Tray are recorded here. The format follows
 
 ### Added
 
+- *Open after a drop*, which decides whether the shelf stays up for a moment to
+  show what landed or closes as soon as the drop is done.
+- A slider for how far inside the tray's edge the dashed drop outline sits.
 - A new app icon and menu bar glyph: something living in the tray, peering out.
   Two shapes and nothing else, with the corner radii uneven on every corner and
   the eyes deliberately mismatched, which is the difference between a creature
@@ -54,6 +57,16 @@ All notable changes to Tray are recorded here. The format follows
 
 ### Fixed
 
+- The shelf could stick open after the pointer left. Two separate causes, both
+  of which stopped anything from ever telling the tray the pointer had gone.
+  The hover tracking area was sized to the tray and rebuilt every time the tray
+  changed shape; a rebuild makes AppKit re-emit enter and exit events that
+  match no pointer movement, and once an *enter* was missed that way the
+  matching exit never arrived either. The tracking area is now constant and
+  where the pointer is gets decided from its actual position. Separately, a
+  drag session that ended without a `draggingExited` — cancelled with Escape,
+  or finished elsewhere — left the tray believing a drag was still overhead,
+  and a tray that thinks a drag is overhead refuses to close.
 - Settings recorded preferences nobody chose. SwiftUI's binding setters fire
   during view updates as well as on input, so merely opening the settings
   window wrote every value on the page to disk — and a slider wrote a *clamped*

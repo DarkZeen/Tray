@@ -72,6 +72,7 @@ struct TrayContentView: View {
             topFlare: shape.topFlare,
             isEmphasised: presenter.state.isDropTargetActive,
             showsDropOutline: settings.showsDropOutline && isOpen,
+            dropOutlineInset: settings.dropOutlineInset,
             notchInset: shape.notchInset
         )
         // Scaled from the top, because that is where the object is attached.

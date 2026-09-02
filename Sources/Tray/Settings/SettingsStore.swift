@@ -46,6 +46,8 @@ final class SettingsStore {
         static let trayWidthFraction = "trayWidthFraction"
         static let showsDropOutline = "showsDropOutline"
         static let thumbnailSize = "thumbnailSize"
+        static let expandsAfterDrop = "expandsAfterDrop"
+        static let dropOutlineInset = "dropOutlineInset"
     }
 
     private let defaults: UserDefaults
@@ -146,6 +148,23 @@ final class SettingsStore {
         }
     }
 
+    /// Whether the shelf opens up to show what just landed, or closes as soon
+    /// as the drop is done.
+    var expandsAfterDrop: Bool {
+        didSet {
+            guard expandsAfterDrop != oldValue else { return }
+            defaults.set(expandsAfterDrop, forKey: Key.expandsAfterDrop)
+        }
+    }
+
+    /// How far the dashed outline sits inside the tray's edge, in points.
+    var dropOutlineInset: Double {
+        didSet {
+            guard dropOutlineInset != oldValue else { return }
+            defaults.set(dropOutlineInset, forKey: Key.dropOutlineInset)
+        }
+    }
+
     /// How large each file is drawn on the shelf, in points.
     var thumbnailSize: Double {
         didSet {
@@ -179,6 +198,8 @@ final class SettingsStore {
             Key.trayWidthFraction: 0.32,
             Key.showsDropOutline: false,
             Key.thumbnailSize: TrayMetrics.defaultThumbnailSize,
+            Key.expandsAfterDrop: true,
+            Key.dropOutlineInset: TrayMetrics.defaultDropOutlineInset,
         ])
 
         // `object(forKey:)` rather than `bool(forKey:)`, so an absent key
@@ -191,6 +212,7 @@ final class SettingsStore {
         activation = Activation(rawValue: defaults.string(forKey: Key.activation) ?? "")
             ?? .both
         showsDropOutline = defaults.bool(forKey: Key.showsDropOutline)
+        expandsAfterDrop = defaults.bool(forKey: Key.expandsAfterDrop)
         appearance = TrayAppearance(rawValue: defaults.string(forKey: Key.appearance) ?? "")
             ?? .graphite
 
@@ -206,6 +228,12 @@ final class SettingsStore {
         thumbnailSize = min(
             max(storedThumbnail, TrayMetrics.thumbnailSizeRange.lowerBound),
             TrayMetrics.thumbnailSizeRange.upperBound
+        )
+
+        let storedInset = defaults.double(forKey: Key.dropOutlineInset)
+        dropOutlineInset = min(
+            max(storedInset, TrayMetrics.dropOutlineInsetRange.lowerBound),
+            TrayMetrics.dropOutlineInsetRange.upperBound
         )
 
         Diagnostics.logger("settings").debug(

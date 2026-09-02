@@ -50,6 +50,7 @@ final class TrayWindowController {
 
         presenter.collapseDelay = { [settings] in settings.autoCollapseDelay }
         presenter.holdsOpenWhenClicked = { [settings] in settings.staysOpenAfterClick }
+        presenter.expandsAfterDrop = { [settings] in settings.expandsAfterDrop }
 
         configureContent()
         configureMouseHandling()
@@ -211,6 +212,10 @@ final class TrayWindowController {
 
         dropView.onDragExit = { [weak self] in
             self?.presenter.dragExited()
+        }
+
+        dropView.onDragSessionEnded = { [weak self] in
+            self?.presenter.dragSessionEnded()
         }
 
         dropView.performDrop = { [weak self] info in

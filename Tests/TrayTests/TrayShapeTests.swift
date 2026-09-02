@@ -252,6 +252,32 @@ struct SettingsPersistenceTests {
         #expect(written.isEmpty)
     }
 
+    @Test func `the drop outline inset is clamped on the way in`() {
+        let defaults = UserDefaults(suiteName: "TrayTests-\(UUID().uuidString)")!
+        defaults.set(-40.0, forKey: "dropOutlineInset")
+
+        #expect(SettingsStore(defaults: defaults).dropOutlineInset
+            == TrayMetrics.dropOutlineInsetRange.lowerBound)
+    }
+
+    @Test func `the newest settings start where they should and survive`() {
+        let defaults = UserDefaults(suiteName: "TrayTests-\(UUID().uuidString)")!
+
+        let first = SettingsStore(defaults: defaults)
+        #expect(first.expandsAfterDrop)
+        // `Double(...)` is not decoration: comparing a Double against a CGFloat
+        // inside #expect fails even when both values are exactly 7, because the
+        // macro captures the operands before the implicit bridge applies.
+        #expect(first.dropOutlineInset == Double(TrayMetrics.defaultDropOutlineInset))
+
+        first.expandsAfterDrop = false
+        first.dropOutlineInset = 20
+
+        let second = SettingsStore(defaults: defaults)
+        #expect(second.expandsAfterDrop == false)
+        #expect(second.dropOutlineInset == 20)
+    }
+
     @Test func `an actual change is written`() {
         let written = writtenKeys { settings in
             settings.appearance = .black

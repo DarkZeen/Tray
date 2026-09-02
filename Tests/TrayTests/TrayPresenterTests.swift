@@ -111,6 +111,72 @@ struct TrayPresenterTests {
         #expect(!tray.isInteracting)
     }
 
+    // MARK: - Drags that end badly
+    //
+    // A tray that still believes a drag is overhead refuses to close, which is
+    // how the shelf ended up occasionally stuck open.
+
+    @Test func `a drag that ends without leaving still lets the tray close`() {
+        // `draggingExited` is not guaranteed: a drag cancelled with Escape, or
+        // one that finishes somewhere else, may never produce one.
+        let tray = presenter(closeAfter: 0)
+        tray.dragApproached()
+        #expect(tray.state == .expanded)
+        #expect(tray.isDragApproaching)
+
+        tray.dragSessionEnded()
+
+        #expect(!tray.isDragApproaching)
+        #expect(tray.state == .collapsed)
+    }
+
+    @Test func `a drag session ending after a drop does not cut the drop short`() {
+        // AppKit sends `draggingEnded` after a successful drop too. If that
+        // rescheduled the close, the moment §4 gives the user to see what
+        // landed would be silently replaced by the ordinary delay.
+        let tray = presenter(closeAfter: 0)
+        tray.dragEntered()
+        tray.dropCompleted()
+        #expect(tray.state == .expanded)
+
+        tray.dragSessionEnded()
+
+        #expect(tray.state == .expanded)
+    }
+
+    @Test func `a drag ending while the pointer is on the tray leaves it open`() {
+        let tray = presenter(closeAfter: 0)
+        tray.pointerEntered()
+        tray.dragApproached()
+
+        tray.dragSessionEnded()
+
+        #expect(tray.state == .expanded)
+    }
+
+    // MARK: - Opening after a drop
+
+    @Test func `with open-after-drop off the shelf closes when the drop is done`() {
+        let tray = presenter(closeAfter: 0)
+        tray.expandsAfterDrop = { false }
+        tray.dragEntered()
+
+        tray.dropCompleted()
+
+        #expect(tray.state == .collapsed)
+    }
+
+    @Test func `with open-after-drop on the shelf shows what landed`() {
+        let tray = presenter(closeAfter: 0)
+        tray.expandsAfterDrop = { true }
+        tray.dragEntered()
+
+        tray.dropCompleted()
+
+        #expect(tray.state == .expanded)
+        #expect(tray.isCollapseScheduled)
+    }
+
     @Test func `an incoming drag opens a closed tray`() {
         let tray = presenter(closeAfter: 0)
         #expect(tray.state == .collapsed)
