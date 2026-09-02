@@ -41,8 +41,20 @@ final class SettingsStore {
     /// drift apart for real reasons — a build with a different signature, an
     /// approval revoked in System Settings — and reconciling them at startup is
     /// only possible if both are recorded.
-    var launchAtLoginIntent: Bool {
-        didSet { defaults.set(launchAtLoginIntent, forKey: Key.launchAtLogin) }
+    ///
+    /// Optional, because "never asked" is a genuinely different state from
+    /// "asked for off", and conflating them is not harmless: on a fresh install
+    /// `SMAppService` can report the app as already enabled, and a `Bool` would
+    /// make startup reconciliation write that down as a preference the user
+    /// never expressed.
+    var launchAtLoginIntent: Bool? {
+        didSet {
+            if let launchAtLoginIntent {
+                defaults.set(launchAtLoginIntent, forKey: Key.launchAtLogin)
+            } else {
+                defaults.removeObject(forKey: Key.launchAtLogin)
+            }
+        }
     }
 
     var showsMenuBarIcon: Bool {
@@ -74,11 +86,22 @@ final class SettingsStore {
             Key.autoCollapseDelay: TrayAnimation.collapseDelay,
         ])
 
-        launchAtLoginIntent = defaults.bool(forKey: Key.launchAtLogin)
+        // `object(forKey:)` rather than `bool(forKey:)`, so an absent key
+        // stays absent instead of arriving as `false`.
+        launchAtLoginIntent = defaults.object(forKey: Key.launchAtLogin) as? Bool
         showsMenuBarIcon = defaults.bool(forKey: Key.showsMenuBarIcon)
         showsFileNames = defaults.bool(forKey: Key.showsFileNames)
         autoCollapseDelay = defaults.double(forKey: Key.autoCollapseDelay)
         activation = Activation(rawValue: defaults.string(forKey: Key.activation) ?? "")
             ?? .both
+
+        Diagnostics.logger("settings").debug(
+            """
+            loaded: collapse=\(self.autoCollapseDelay, privacy: .public) \
+            names=\(self.showsFileNames, privacy: .public) \
+            icon=\(self.showsMenuBarIcon, privacy: .public) \
+            launchIntent=\(self.launchAtLoginIntent.map(String.init(describing:)) ?? "unset", privacy: .public)
+            """
+        )
     }
 }

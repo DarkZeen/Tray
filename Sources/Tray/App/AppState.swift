@@ -52,6 +52,8 @@ final class AppState {
 
         // Holding the tray open implies wanting to see it, including when it
         // is empty — which is the one state a seed cannot produce.
+        if Diagnostics.debugSettingsPane != nil { showSettings() }
+
         guard !urls.isEmpty || Diagnostics.holdsTrayOpen else { return }
         displays.openActive()
     }
@@ -79,6 +81,7 @@ final class AppState {
     /// whatever actually happened — so the UI can never show a toggle the
     /// system disagrees with (§34).
     func setLaunchAtLogin(_ enabled: Bool) {
+        // A deliberate choice, so it is recorded as one.
         settings.launchAtLoginIntent = enabled
         let result = launchAtLogin.setEnabled(enabled)
 

@@ -46,6 +46,20 @@ enum Diagnostics {
         #endif
     }()
 
+    /// `TRAY_DEBUG_SETTINGS=1`, or a pane name such as `privacy`, opens the
+    /// settings window at launch on that page.
+    ///
+    /// Debug builds only. Settings is reachable from a menu bar item, which is
+    /// awkward to get to — and impossible to screenshot from — while iterating
+    /// on the window itself.
+    static let debugSettingsPane: String? = {
+        #if DEBUG
+        ProcessInfo.processInfo.environment["TRAY_DEBUG_SETTINGS"]
+        #else
+        nil
+        #endif
+    }()
+
     /// `TRAY_DEBUG=1` turns on the geometry overlay. Read once: it is a
     /// development switch, not a setting.
     ///

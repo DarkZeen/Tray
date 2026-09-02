@@ -6,6 +6,29 @@ All notable changes to Tray are recorded here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- A settings window with sidebar navigation and four pages: General, Tray,
+  Privacy and About. The Privacy page states, permission by permission, what
+  Tray does not ask for — no Accessibility, no Screen Recording, no Full Disk
+  Access, no camera or microphone, and no network at all.
+
+### Fixed
+
+- Tray no longer records a Launch at Login preference the user never expressed.
+  `SMAppService` reports the app as enabled on a fresh install, and startup
+  reconciliation treated an absent preference as "off" — so it read that as the
+  user having switched it on elsewhere, adopted it, and wrote it down. "Never
+  asked" is now a distinct state from "asked for off".
+- The tray's closed item indicator drew below the tray instead of inside it.
+  The open shelf was setting the height of the layer stack, so the closed
+  layer's alignment resolved against the wrong bounds.
+- A tray opened from the menu bar never closed on its own, because nothing
+  schedules a collapse when there is no pointer to leave.
+- The tray could open when nothing had gone near it: rebuilding a tracking area
+  makes AppKit fire enter and exit events that do not correspond to any pointer
+  movement, and only the exit was being verified.
+
 ## [0.1.0]
 
 First release. The scope is deliberately locked: a shelf at the top of the

@@ -52,6 +52,16 @@ That is the entire product. There is no media player, no clipboard history, no w
   <img src="docs/assets/readme/drop.png" width="380" alt="The tray with a drag overhead, reading Release to stash">
 </p>
 
+## Settings
+
+Four pages, and most of them you will open once. General has Launch at Login and the menu bar icon; Tray has what opens the shelf, how long it waits before closing, and whether file names show.
+
+The Privacy page is the one worth a look. It is the same page other menu bar apps use to explain which permissions they need — except that Tray's version is a list of the ones it does not.
+
+<p align="center">
+  <img src="docs/assets/readme/settings.png" width="720" alt="The Privacy page in Tray's settings, listing Accessibility, Screen Recording, Full Disk Access and Camera and Microphone, each marked Not needed">
+</p>
+
 ## Your files stay where they are
 
 Tray knows about the files you drag onto it and nothing else. No account, no analytics, no network — the app never opens a connection, so there is nothing to opt out of.

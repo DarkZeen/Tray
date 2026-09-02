@@ -46,6 +46,8 @@ final class LaunchAtLoginService {
             return
         }
 
+        logger.debug("SMAppService.mainApp.status = \(self.service.status.rawValue, privacy: .public)")
+
         state = switch service.status {
         case .enabled: .enabled
         case .requiresApproval: .requiresApproval
@@ -54,29 +56,60 @@ final class LaunchAtLoginService {
         }
     }
 
-    /// Reconciles the stored wish with what the system actually has (§34).
+    /// What startup reconciliation should do (§34).
     ///
-    /// Runs once at launch. It re-registers an item the system lost — most
-    /// often because the signature changed between builds — and it *adopts* an
-    /// enable the user made directly in System Settings, so the two never drift
-    /// into disagreeing about what the user asked for.
-    func reconcile(intent: Bool) -> Bool {
-        refresh()
+    /// Pulled out as a pure function over (wish, system state) because it is a
+    /// decision table with one genuinely surprising row, and a decision table
+    /// that cannot be tested is a decision table that will be got wrong.
+    enum Reconciliation: Equatable {
+        /// Leave things alone and store this wish, which may be "none".
+        case keep(Bool?)
+        /// The system lost an item the user asked for; register it again.
+        case reregister
+        /// The user switched it on in System Settings; take their word for it.
+        case adopt
+    }
 
+    static func decide(intent: Bool?, state: State) -> Reconciliation {
         switch (intent, state) {
+        case (nil, _):
+            // The surprising row. On a fresh install `SMAppService` reports
+            // `.enabled` before anyone has asked for anything, so treating an
+            // absent wish as "off" would make the next case fire and record a
+            // choice the user never made — which then re-registers forever.
+            // Report the system's real state in the UI; write nothing down.
+            .keep(nil)
+
         case (true, .disabled):
-            logger.notice("Login item missing though the user asked for it; re-registering.")
-            setEnabled(true)
-            return intent
+            .reregister
 
         case (false, .enabled):
-            // The user switched it on in System Settings rather than here.
-            // Their action wins; adopt it.
-            logger.notice("Login item enabled outside the app; adopting.")
-            return true
+            .adopt
 
         default:
-            return intent
+            .keep(intent)
+        }
+    }
+
+    /// Reconciles the stored wish with what the system actually has (§34).
+    ///
+    /// Runs once at launch. Returns the wish to store, which may still be
+    /// "none".
+    func reconcile(intent: Bool?) -> Bool? {
+        refresh()
+
+        switch Self.decide(intent: intent, state: state) {
+        case .keep(let wish):
+            return wish
+
+        case .reregister:
+            logger.notice("Login item missing though the user asked for it; re-registering.")
+            setEnabled(true)
+            return true
+
+        case .adopt:
+            logger.notice("Login item enabled outside the app; adopting.")
+            return true
         }
     }
 

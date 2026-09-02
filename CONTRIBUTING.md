@@ -53,6 +53,7 @@ Three environment variables help, all compiled out of release builds entirely:
 | `TRAY_DEBUG=1` | Draws the screen, safe area, notch size, tray frame and state next to the tray |
 | `TRAY_DEBUG_SEED=/path/a:/path/b` | Puts those files on the shelf and opens it at launch |
 | `TRAY_DEBUG_HOLD=1` | Stops the tray closing on its own |
+| `TRAY_DEBUG_SETTINGS=1` | Opens the settings window at launch; a pane name such as `privacy` opens that page |
 
 `SEED` and `HOLD` together are how you get a particular state onto a real
 screen, over a real desktop, and then look at it for as long as you like:
