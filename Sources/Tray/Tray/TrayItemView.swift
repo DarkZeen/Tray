@@ -8,7 +8,7 @@ import SwiftUI
 struct TrayItemView: View {
     let item: TrayItem
     let thumbnails: ThumbnailProvider
-    let showsFilename: Bool
+    let metrics: TrayItemMetrics
     let isBeingDragged: Bool
     let isSelected: Bool
 
@@ -26,14 +26,14 @@ struct TrayItemView: View {
     @State private var isHovering = false
 
     private var displayImage: NSImage {
-        image ?? thumbnails.immediateImage(for: item)
+        image ?? thumbnails.immediateImage(for: item, size: metrics.thumbnailSize)
     }
 
     var body: some View {
-        VStack(spacing: 5) {
+        VStack(spacing: TrayMetrics.labelSpacing) {
             thumbnail
 
-            if showsFilename {
+            if metrics.showsFilename {
                 Text(item.filename)
                     .font(.system(size: 9.5, weight: .medium))
                     // Slight positive tracking: small type over a translucent
@@ -44,10 +44,10 @@ struct TrayItemView: View {
                     // Middle truncation keeps the extension visible, which is
                     // usually the most identifying part of a filename.
                     .truncationMode(.middle)
-                    .frame(width: TrayMetrics.itemWidth)
+                    .frame(width: metrics.itemWidth)
             }
         }
-        .frame(width: TrayMetrics.itemWidth)
+        .frame(width: metrics.itemWidth)
         .scaleEffect(scale)
         .opacity(isBeingDragged ? 0.32 : 1)
         .animation(TrayAnimation.hover, value: isHovering)
@@ -58,10 +58,10 @@ struct TrayItemView: View {
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(item.accessibilityLabel)
         .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
-        .task(id: item.identity) {
+        .task(id: TaskKey(identity: item.identity, size: metrics.thumbnailSize)) {
             image = await thumbnails.previewImage(
                 for: item,
-                size: CGSize(width: TrayMetrics.thumbnailSize, height: TrayMetrics.thumbnailSize)
+                size: CGSize(width: metrics.thumbnailSize, height: metrics.thumbnailSize)
             )
         }
     }
@@ -73,7 +73,7 @@ struct TrayItemView: View {
             .resizable()
             .interpolation(.high)
             .aspectRatio(contentMode: .fit)
-            .frame(width: TrayMetrics.thumbnailSize, height: TrayMetrics.thumbnailSize)
+            .frame(width: metrics.thumbnailSize, height: metrics.thumbnailSize)
             .opacity(item.isAvailable ? 1 : 0.4)
             .background {
                 // Hover is a whisper; selection is a statement. Both live on
@@ -104,6 +104,13 @@ struct TrayItemView: View {
             .symbolRenderingMode(.palette)
             .foregroundStyle(.white, Color(red: 0.85, green: 0.4, blue: 0.3))
             .offset(x: 2, y: 2)
+    }
+
+    /// Re-fetches the preview when either the file or the size changes, so a
+    /// bigger thumbnail is actually rendered bigger rather than scaled up.
+    private struct TaskKey: Equatable {
+        var identity: String
+        var size: CGFloat
     }
 
     private var selectionFill: Color {

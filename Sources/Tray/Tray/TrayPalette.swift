@@ -102,8 +102,12 @@ struct TrayPalette: Equatable, Sendable {
     }
 
     /// The dashed outline around the drop area, when it is switched on.
+    ///
+    /// Faint on purpose: it is a hint about where a drop lands, not a frame
+    /// around the contents, and it is on screen the whole time the tray is
+    /// open.
     var dropOutlineInk: Color {
-        appearance == .light ? .black.opacity(0.26) : .white.opacity(0.34)
+        appearance == .light ? .black.opacity(0.16) : .white.opacity(0.20)
     }
 
     /// Fill behind an item under the pointer.

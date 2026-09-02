@@ -30,9 +30,9 @@ final class ThumbnailProvider {
 
     /// The immediate answer: a cached Quick Look thumbnail if we have one,
     /// otherwise the system's file icon. Never `nil`, never blocking.
-    func immediateImage(for item: TrayItem) -> NSImage {
+    func immediateImage(for item: TrayItem, size: CGFloat) -> NSImage {
         if let cached = cache[item.identity] { return cached }
-        return systemIcon(for: item)
+        return systemIcon(for: item, size: size)
     }
 
     /// Asks Quick Look for a real preview. Returns `nil` when the file has no
@@ -63,7 +63,9 @@ final class ThumbnailProvider {
 
     func forget(_ item: TrayItem) {
         cache[item.identity] = nil
-        icons[item.identity] = nil
+        for key in icons.keys where key.hasPrefix("\(item.identity)@") {
+            icons[key] = nil
+        }
     }
 
     func removeAll() {
@@ -71,8 +73,11 @@ final class ThumbnailProvider {
         icons.removeAll()
     }
 
-    private func systemIcon(for item: TrayItem) -> NSImage {
-        if let cached = icons[item.identity] { return cached }
+    private func systemIcon(for item: TrayItem, size: CGFloat) -> NSImage {
+        // Keyed by size too: the same file drawn larger needs a fresh
+        // rasterisation, not the small one scaled up.
+        let key = "\(item.identity)@\(Int(size))"
+        if let cached = icons[key] { return cached }
 
         guard item.isAvailable else {
             return NSImage(
@@ -81,8 +86,8 @@ final class ThumbnailProvider {
             ) ?? NSImage()
         }
 
-        let icon = Self.flattened(NSWorkspace.shared.icon(forFile: item.url.path))
-        icons[item.identity] = icon
+        let icon = Self.flattened(NSWorkspace.shared.icon(forFile: item.url.path), to: size)
+        icons[key] = icon
         return icon
     }
 
@@ -93,8 +98,7 @@ final class ThumbnailProvider {
     /// re-resolves representations on every pass and upscales from the small
     /// one. Flattening it at the size it will actually be shown fixes the
     /// sharpness and takes the work out of the draw path.
-    private static func flattened(_ image: NSImage) -> NSImage {
-        let side = TrayMetrics.thumbnailSize
+    private static func flattened(_ image: NSImage, to side: CGFloat) -> NSImage {
         let size = NSSize(width: side, height: side)
 
         let result = NSImage(size: size)

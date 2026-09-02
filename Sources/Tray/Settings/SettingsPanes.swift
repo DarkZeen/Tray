@@ -245,6 +245,31 @@ struct TrayPane: View {
                 SettingsRowDivider()
 
                 SettingsRow(
+                    icon: "square.resize",
+                    title: "Icon size",
+                    description: "How large each file is drawn on the shelf."
+                ) {
+                    HStack(spacing: 8) {
+                        Slider(
+                            value: Binding(
+                                get: { settings.thumbnailSize },
+                                set: { settings.thumbnailSize = $0 }
+                            ),
+                            in: TrayMetrics.thumbnailSizeRange
+                        )
+                        .frame(width: 110)
+
+                        Text("\(Int(settings.thumbnailSize.rounded()))pt")
+                            .font(.system(size: 11))
+                            .foregroundStyle(.secondary)
+                            .monospacedDigit()
+                            .frame(width: 34, alignment: .trailing)
+                    }
+                }
+
+                SettingsRowDivider()
+
+                SettingsRow(
                     icon: "rectangle.dashed",
                     title: "Outline the drop area",
                     description: "A dashed border showing where a dropped file will land."

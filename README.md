@@ -65,7 +65,7 @@ That is the entire product. There is no media player, no clipboard history, no w
 
 Four pages, and most of them you will open once. General has Launch at Login and the menu bar icon; Tray has what opens the shelf, how long it waits before closing, and whether file names show. Opening Tray while it is already running opens this window — an app with no Dock icon has to have a front door somewhere.
 
-By default the shelf closes the moment the pointer leaves, and a tray you have clicked into waits for a click elsewhere so that reaching for the keyboard does not close it. Both are settings: *Close after* goes up to three seconds, and *Stay open after a click* turns the second behaviour off entirely. *Surface* picks between the three looks, *Width* sets how much of the screen the shelf spans, and *Outline the drop area* adds a dashed border showing where a dropped file will land.
+By default the shelf closes the moment the pointer leaves, and a tray you have clicked into waits for a click elsewhere so that reaching for the keyboard does not close it. Both are settings: *Close after* goes up to three seconds, and *Stay open after a click* turns the second behaviour off entirely. *Surface* picks between the three looks, *Width* sets how much of the screen the shelf spans, *Icon size* sets how large each file is drawn, and *Outline the drop area* adds a dashed border showing where a dropped file will land.
 
 The Privacy page is the one worth a look. It is the same page other menu bar apps use to explain which permissions they need — except that Tray's version is a list of the ones it does not.
 

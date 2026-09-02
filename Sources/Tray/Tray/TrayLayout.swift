@@ -11,7 +11,6 @@ enum TrayMetrics {
 
     /// Height of the resting pill on a display with no notch to borrow.
     static let collapsedHeight: CGFloat = 30
-    static let expandedHeight: CGFloat = 98
 
     static let collapsedWidth: CGFloat = 108
     static let minimumWidth: CGFloat = 116
@@ -62,15 +61,23 @@ enum TrayMetrics {
 
     // MARK: Items
 
-    static let thumbnailSize: CGFloat = 52
+    /// How large a file is drawn. Adjustable, because how much of the shelf a
+    /// file should occupy depends on what you keep in it — a row of photographs
+    /// wants a different size from a row of documents.
+    static let defaultThumbnailSize: CGFloat = 52
+    static let thumbnailSizeRange: ClosedRange<Double> = 32...88
+
     static let itemSpacing: CGFloat = 9
     static let horizontalPadding: CGFloat = 14
     static let verticalPadding: CGFloat = 12
 
-    /// Width one item occupies including its label column. Wider than the
-    /// thumbnail so that filenames get somewhere to live without every one of
-    /// them ending in an ellipsis.
-    static let itemWidth: CGFloat = 66
+    /// How much wider than its thumbnail an item is, so that filenames get
+    /// somewhere to live without every one of them ending in an ellipsis.
+    static let itemLabelMargin: CGFloat = 14
+
+    /// The gap between a thumbnail and the name beneath it.
+    static let labelSpacing: CGFloat = 5
+    static let labelHeight: CGFloat = 13
 
     /// How far the shelf's contents fade out at a scrolling edge (§20).
     static let scrollFade: CGFloat = 18
@@ -97,6 +104,41 @@ enum TrayMetrics {
     /// view layer and the window just stays big enough to contain the largest
     /// state.
     static let panelPadding: CGFloat = 44
+}
+
+/// How big one item on the shelf is.
+///
+/// Derived from the two settings that change it, and passed down as one value
+/// so that the layout, the views and the thumbnail cache cannot disagree about
+/// how large a file is meant to be.
+struct TrayItemMetrics: Equatable, Sendable {
+    var thumbnailSize: CGFloat
+    var showsFilename: Bool
+
+    static let `default` = TrayItemMetrics(
+        thumbnailSize: TrayMetrics.defaultThumbnailSize,
+        showsFilename: true
+    )
+
+    var itemWidth: CGFloat { thumbnailSize + TrayMetrics.itemLabelMargin }
+
+    var itemHeight: CGFloat {
+        thumbnailSize + (showsFilename ? TrayMetrics.labelSpacing + TrayMetrics.labelHeight : 0)
+    }
+
+    /// The open shelf's height, before any allowance for the notch.
+    var expandedHeight: CGFloat {
+        itemHeight + TrayMetrics.verticalPadding * 2
+    }
+
+    /// The tallest the shelf can get, used to size the window once rather than
+    /// resizing it whenever the setting moves.
+    static var maximumExpandedHeight: CGFloat {
+        TrayItemMetrics(
+            thumbnailSize: TrayMetrics.thumbnailSizeRange.upperBound,
+            showsFilename: true
+        ).expandedHeight
+    }
 }
 
 /// The size of the tray surface for a given state and item count.
@@ -145,30 +187,36 @@ struct TrayShape: Equatable {
     }
 
     /// Width the shelf's items want, before any clamping.
-    static func contentWidth(itemCount: Int) -> CGFloat {
+    static func contentWidth(itemCount: Int, item: TrayItemMetrics) -> CGFloat {
         guard itemCount > 0 else { return TrayMetrics.emptyWidth }
-        return CGFloat(itemCount) * TrayMetrics.itemWidth
+        return CGFloat(itemCount) * item.itemWidth
             + CGFloat(itemCount - 1) * TrayMetrics.itemSpacing
             + TrayMetrics.horizontalPadding * 2
     }
 
     /// Whether the items fit, or whether the shelf has to start scrolling (§20).
-    static func fits(itemCount: Int, screenWidth: CGFloat, widthFraction: Double) -> Bool {
-        contentWidth(itemCount: itemCount)
+    static func fits(
+        itemCount: Int,
+        screenWidth: CGFloat,
+        widthFraction: Double,
+        item: TrayItemMetrics
+    ) -> Bool {
+        contentWidth(itemCount: itemCount, item: item)
             <= TrayMetrics.expandedWidth(forScreenWidth: screenWidth, fraction: widthFraction)
     }
 
     static func expanded(
         screenWidth: CGFloat,
         widthFraction: Double,
-        notchHeight: CGFloat
+        notchHeight: CGFloat,
+        item: TrayItemMetrics = .default
     ) -> TrayShape {
         TrayShape(
             width: TrayMetrics.expandedWidth(
                 forScreenWidth: screenWidth,
                 fraction: widthFraction
             ),
-            height: TrayMetrics.expandedHeight + notchHeight,
+            height: item.expandedHeight + notchHeight,
             cornerRadius: TrayMetrics.expandedCornerRadius,
             topFlare: TrayMetrics.topFlare,
             notchInset: notchHeight

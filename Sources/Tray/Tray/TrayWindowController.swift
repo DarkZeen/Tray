@@ -94,7 +94,7 @@ final class TrayWindowController {
 
         // The debug overlay hangs below the tray and would otherwise be clipped
         // by the window it lives in — a diagnostic you cannot read is not one.
-        let height = TrayMetrics.expandedHeight
+        let height = TrayItemMetrics.maximumExpandedHeight
             + (geometry.notchSize?.height ?? 0)
             + TrayMetrics.panelPadding
             + (Diagnostics.isDebugOverlayEnabled ? 140 : 0)

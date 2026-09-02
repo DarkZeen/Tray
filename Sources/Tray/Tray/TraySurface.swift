@@ -111,13 +111,17 @@ struct TraySurfaceStyle: ViewModifier {
         TraySurface(cornerRadius: cornerRadius, topFlare: topFlare)
     }
 
-    /// The dashed outline follows the surface but without the flare: the flare
-    /// belongs to the outer silhouette, and an inset copy of it would stick out
-    /// past the edge it is meant to sit inside.
-    private var outlineShape: TraySurface {
-        TraySurface(
-            cornerRadius: max(cornerRadius - TrayMetrics.dropOutlineInset, 4),
-            topFlare: 0
+    /// The dashed outline is a plain rounded rectangle — rounded on all four
+    /// corners, not just the two the surface rounds.
+    ///
+    /// The surface has square shoulders because it hangs off the top edge of
+    /// the display and has nowhere else to go. The outline sits *inside* it,
+    /// where nothing is holding its top corners square, so squaring them only
+    /// made it look unfinished.
+    private var outlineShape: RoundedRectangle {
+        RoundedRectangle(
+            cornerRadius: max(cornerRadius - TrayMetrics.dropOutlineInset, 6),
+            style: .continuous
         )
     }
 

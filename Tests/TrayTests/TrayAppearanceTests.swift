@@ -160,6 +160,50 @@ struct TrayAppearanceTests {
         try png.write(to: directory.appendingPathComponent("\(name).png"))
     }
 
+    /// The menu bar glyph at the sizes a menu bar actually uses, on a dark
+    /// strip, because that is how it will be seen.
+    @Test(.enabled(if: TrayAppearanceTests.isEnabled))
+    func `render the menu bar glyph`() throws {
+        try FileManager.default.createDirectory(at: output, withIntermediateDirectories: true)
+
+        let heights: [CGFloat] = [16, 18, 22, 44]
+        let padding: CGFloat = 14
+        let canvas = NSSize(
+            width: heights.reduce(0) { $0 + $1 + padding } + padding,
+            height: 64
+        )
+
+        let strip = NSImage(size: canvas)
+        strip.lockFocus()
+        // A light strip, so the template glyph's own black shows as-is. Tinting
+        // it would only test the tinting.
+        NSColor(calibratedWhite: 0.93, alpha: 1).setFill()
+        NSRect(origin: .zero, size: canvas).fill()
+
+        let glyph = TrayIcon.menuBarImage()
+        var x = padding
+        for height in heights {
+            let width = height * glyph.size.width / glyph.size.height
+            glyph.draw(in: NSRect(
+                x: x,
+                y: (canvas.height - height) / 2,
+                width: width,
+                height: height
+            ))
+            x += height + padding
+        }
+        strip.unlockFocus()
+
+        guard let tiff = strip.tiffRepresentation,
+              let bitmap = NSBitmapImageRep(data: tiff),
+              let png = bitmap.representation(using: .png, properties: [:])
+        else {
+            Issue.record("could not render the glyph strip")
+            return
+        }
+        try png.write(to: output.appendingPathComponent("menu-bar-glyph.png"))
+    }
+
     // MARK: - Machinery
 
     private func render(

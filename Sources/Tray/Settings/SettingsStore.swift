@@ -45,6 +45,7 @@ final class SettingsStore {
         static let appearance = "appearance"
         static let trayWidthFraction = "trayWidthFraction"
         static let showsDropOutline = "showsDropOutline"
+        static let thumbnailSize = "thumbnailSize"
     }
 
     private let defaults: UserDefaults
@@ -145,7 +146,20 @@ final class SettingsStore {
         }
     }
 
+    /// How large each file is drawn on the shelf, in points.
+    var thumbnailSize: Double {
+        didSet {
+            guard thumbnailSize != oldValue else { return }
+            defaults.set(thumbnailSize, forKey: Key.thumbnailSize)
+        }
+    }
+
     static let widthFractionRange: ClosedRange<Double> = 0.18...0.95
+
+    /// The two settings that decide how big an item is, as one value.
+    var itemMetrics: TrayItemMetrics {
+        TrayItemMetrics(thumbnailSize: thumbnailSize, showsFilename: showsFileNames)
+    }
 
     static let collapseDelayRange: ClosedRange<Double> = 0...3.0
 
@@ -164,6 +178,7 @@ final class SettingsStore {
             Key.appearance: TrayAppearance.graphite.rawValue,
             Key.trayWidthFraction: 0.32,
             Key.showsDropOutline: false,
+            Key.thumbnailSize: TrayMetrics.defaultThumbnailSize,
         ])
 
         // `object(forKey:)` rather than `bool(forKey:)`, so an absent key
@@ -185,6 +200,12 @@ final class SettingsStore {
         trayWidthFraction = min(
             max(storedWidth, Self.widthFractionRange.lowerBound),
             Self.widthFractionRange.upperBound
+        )
+
+        let storedThumbnail = defaults.double(forKey: Key.thumbnailSize)
+        thumbnailSize = min(
+            max(storedThumbnail, TrayMetrics.thumbnailSizeRange.lowerBound),
+            TrayMetrics.thumbnailSizeRange.upperBound
         )
 
         Diagnostics.logger("settings").debug(

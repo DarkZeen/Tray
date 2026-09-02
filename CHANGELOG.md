@@ -8,11 +8,19 @@ All notable changes to Tray are recorded here. The format follows
 
 ### Added
 
+- A new app icon and menu bar glyph: something living in the tray, peering out.
+  Two shapes and nothing else, with the corner radii uneven on every corner and
+  the eyes deliberately mismatched, which is the difference between a creature
+  and a rounded rectangle with dots on it.
+- *Icon size*, which sets how large each file is drawn on the shelf. Thumbnails
+  are re-rendered at the chosen size rather than scaled up, and the shelf grows
+  to fit them.
 - *Width*, which sets how much of the screen the open shelf spans. Stored as a
   share of the display rather than a number of points, so one setting means the
   same thing on a laptop screen and a 5K display.
 - *Outline the drop area*, a dashed border marking where a dropped file will
-  land. It starts below the camera housing so the whole border is visible.
+  land. Rounded on all four corners, faint enough to stay a hint rather than a
+  frame, and starting below the camera housing so the whole border is visible.
 - Three surfaces, chosen in Settings. Graphite is the default; Light flips the
   ink so it stays legible; Pitch black is fully opaque and the same black as
   the camera housing, so on a notched Mac the shelf reads as the notch growing

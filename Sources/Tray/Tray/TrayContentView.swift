@@ -94,7 +94,8 @@ struct TrayContentView: View {
             return .expanded(
                 screenWidth: geometry.frame.width,
                 widthFraction: settings.trayWidthFraction,
-                notchHeight: geometry.notchSize?.height ?? 0
+                notchHeight: geometry.notchSize?.height ?? 0,
+                item: settings.itemMetrics
             )
         }
         return .collapsed(notchSize: geometry.notchSize, isEmpty: store.isEmpty)
@@ -171,7 +172,8 @@ struct TrayContentView: View {
         if TrayShape.fits(
             itemCount: store.count,
             screenWidth: geometry.frame.width,
-            widthFraction: settings.trayWidthFraction
+            widthFraction: settings.trayWidthFraction,
+            item: settings.itemMetrics
         ) {
             itemRow
         } else {
@@ -193,7 +195,7 @@ struct TrayContentView: View {
                 TrayItemView(
                     item: item,
                     thumbnails: thumbnails,
-                    showsFilename: settings.showsFileNames,
+                    metrics: settings.itemMetrics,
                     isBeingDragged: presenter.state.draggedItemID == item.id,
                     isSelected: selection.contains(item.id),
                     onDragBegan: { onItemDragBegan(item) },

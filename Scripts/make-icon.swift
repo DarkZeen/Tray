@@ -25,6 +25,56 @@ let iconset = FileManager.default.temporaryDirectory
 
 try? FileManager.default.createDirectory(at: iconset, withIntermediateDirectories: true)
 
+/// A rounded rectangle whose four corners may each have a different radius.
+///
+/// Uniform corners read as geometry. Uneven ones read as a body.
+func roundedPath(
+    _ rect: NSRect,
+    topLeft: CGFloat,
+    topRight: CGFloat,
+    bottomRight: CGFloat,
+    bottomLeft: CGFloat
+) -> NSBezierPath {
+    let path = NSBezierPath()
+    path.move(to: NSPoint(x: rect.minX + bottomLeft, y: rect.minY))
+    path.appendArc(
+        from: NSPoint(x: rect.maxX, y: rect.minY),
+        to: NSPoint(x: rect.maxX, y: rect.maxY),
+        radius: bottomRight
+    )
+    path.appendArc(
+        from: NSPoint(x: rect.maxX, y: rect.maxY),
+        to: NSPoint(x: rect.minX, y: rect.maxY),
+        radius: topRight
+    )
+    path.appendArc(
+        from: NSPoint(x: rect.minX, y: rect.maxY),
+        to: NSPoint(x: rect.minX, y: rect.minY),
+        radius: topLeft
+    )
+    path.appendArc(
+        from: NSPoint(x: rect.minX, y: rect.minY),
+        to: NSPoint(x: rect.maxX, y: rect.minY),
+        radius: bottomLeft
+    )
+    path.close()
+    return path
+}
+
+/// A capsule, rotated about its own centre.
+func eyePath(center: NSPoint, width: CGFloat, height: CGFloat, degrees: CGFloat) -> NSBezierPath {
+    let path = NSBezierPath(
+        roundedRect: NSRect(x: -width / 2, y: -height / 2, width: width, height: height),
+        xRadius: width / 2,
+        yRadius: width / 2
+    )
+    var transform = AffineTransform.identity
+    transform.translate(x: center.x, y: center.y)
+    transform.rotate(byDegrees: degrees)
+    path.transform(using: transform)
+    return path
+}
+
 func drawIcon(size: CGFloat) -> NSBitmapImageRep {
     let pixels = Int(size)
     guard let rep = NSBitmapImageRep(
@@ -71,62 +121,40 @@ func drawIcon(size: CGFloat) -> NSBitmapImageRep {
     NSGraphicsContext.saveGraphicsState()
     NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: rep)
 
-    // The mark: an open-topped tray with one thing resting in it.
+    // The mark: something living in the tray, peering out.
     //
-    // Open at the top is what separates a tray from a box. A closed outline
-    // reads as a button, or as a minus sign once the interior shrinks; the
-    // U-shape reads as a container things go into and come back out of, which
-    // is the whole product.
-    let markWidth = 548 * unit
-    let markHeight = 296 * unit
-    let left = (size - markWidth) / 2
-    let right = left + markWidth
-    let bottom = (size - markHeight) / 2 - 10 * unit
-    let top = bottom + markHeight
-    let corner = 128 * unit
-    let stroke = 54 * unit
+    // Two shapes and nothing else. A blob rising from the bottom edge — so it
+    // reads as sitting *in* something rather than floating — and two eyes. The
+    // asymmetry is the whole trick: the corner radii differ on every corner and
+    // the eyes are not a matched pair, which is the difference between a
+    // creature and a rounded rectangle with dots on it.
+    plateShape.addClip()
 
-    let ink = NSColor(calibratedWhite: 1, alpha: 0.95)
+    // Sized past the plate on the left and bottom so the clip trims it to the
+    // plate's own edge; the one huge corner is what lets the plate show through
+    // and turns a filled square into a shape with a head.
+    let body = NSRect(x: 130 * unit, y: -60 * unit, width: 820 * unit, height: 840 * unit)
+    let creature = roundedPath(
+        body,
+        topLeft: 230 * unit,
+        topRight: 470 * unit,
+        bottomRight: 210 * unit,
+        bottomLeft: 230 * unit
+    )
+    // A gentle gradient rather than flat white, so the body reads as a surface
+    // catching light rather than as a hole cut in the plate.
+    NSGradient(colors: [
+        NSColor(calibratedWhite: 0.99, alpha: 1),
+        NSColor(calibratedWhite: 0.85, alpha: 1),
+    ])?.draw(in: creature, angle: -68)
 
-    let tray = NSBezierPath()
-    tray.lineWidth = stroke
-    tray.lineCapStyle = .round
-    tray.lineJoinStyle = .round
-    tray.move(to: NSPoint(x: left, y: top))
-    tray.line(to: NSPoint(x: left, y: bottom + corner))
-    tray.appendArc(
-        withCenter: NSPoint(x: left + corner, y: bottom + corner),
-        radius: corner,
-        startAngle: 180,
-        endAngle: 270
-    )
-    tray.line(to: NSPoint(x: right - corner, y: bottom))
-    tray.appendArc(
-        withCenter: NSPoint(x: right - corner, y: bottom + corner),
-        radius: corner,
-        startAngle: 270,
-        endAngle: 360
-    )
-    tray.line(to: NSPoint(x: right, y: top))
-    ink.setStroke()
-    tray.stroke()
-
-    // The thing in the tray. Standing proud of the walls says "just dropped
-    // in" rather than "filed away".
-    let tileWidth = 178 * unit
-    let tileHeight = 158 * unit
-    let tile = NSBezierPath(
-        roundedRect: NSRect(
-            x: (size - tileWidth) / 2,
-            y: bottom + stroke * 0.9,
-            width: tileWidth,
-            height: tileHeight
-        ),
-        xRadius: 48 * unit,
-        yRadius: 48 * unit
-    )
-    ink.setFill()
-    tile.fill()
+    // Eyes: capsules, leaning, and deliberately mismatched.
+    let dark = NSColor(calibratedWhite: 0.09, alpha: 1)
+    dark.setFill()
+    eyePath(center: NSPoint(x: 466 * unit, y: 418 * unit),
+            width: 102 * unit, height: 214 * unit, degrees: -16).fill()
+    eyePath(center: NSPoint(x: 672 * unit, y: 468 * unit),
+            width: 86 * unit, height: 176 * unit, degrees: -16).fill()
 
     NSGraphicsContext.restoreGraphicsState()
     return rep

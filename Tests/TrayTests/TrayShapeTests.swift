@@ -67,7 +67,7 @@ struct TrayShapeTests {
         )
 
         #expect(shape.notchInset == notchHeight)
-        #expect(shape.height == TrayMetrics.expandedHeight + notchHeight)
+        #expect(shape.height == TrayItemMetrics.default.expandedHeight + notchHeight)
     }
 
     @Test func `a display without a notch loses no height to one`() {
@@ -78,7 +78,7 @@ struct TrayShapeTests {
         )
 
         #expect(shape.notchInset == 0)
-        #expect(shape.height == TrayMetrics.expandedHeight)
+        #expect(shape.height == TrayItemMetrics.default.expandedHeight)
     }
 
     // MARK: - Flare
@@ -115,13 +115,60 @@ struct TrayShapeTests {
     // MARK: - Scrolling
 
     @Test func `items scroll once they outgrow the chosen width`() {
-        #expect(TrayShape.fits(itemCount: 3, screenWidth: screenWidth, widthFraction: 0.32))
-        #expect(!TrayShape.fits(itemCount: 40, screenWidth: screenWidth, widthFraction: 0.32))
+        #expect(TrayShape.fits(itemCount: 3, screenWidth: screenWidth, widthFraction: 0.32, item: .default))
+        #expect(!TrayShape.fits(itemCount: 40, screenWidth: screenWidth, widthFraction: 0.32, item: .default))
     }
 
     @Test func `a wider shelf fits more before it scrolls`() {
-        #expect(!TrayShape.fits(itemCount: 12, screenWidth: screenWidth, widthFraction: 0.2))
-        #expect(TrayShape.fits(itemCount: 12, screenWidth: screenWidth, widthFraction: 0.8))
+        #expect(!TrayShape.fits(itemCount: 12, screenWidth: screenWidth, widthFraction: 0.2, item: .default))
+        #expect(TrayShape.fits(itemCount: 12, screenWidth: screenWidth, widthFraction: 0.8, item: .default))
+    }
+
+    // MARK: - Item size
+
+    @Test func `a bigger icon setting makes a taller shelf`() {
+        let small = TrayItemMetrics(thumbnailSize: 36, showsFilename: true)
+        let large = TrayItemMetrics(thumbnailSize: 80, showsFilename: true)
+
+        #expect(large.expandedHeight > small.expandedHeight)
+        #expect(large.itemWidth > small.itemWidth)
+    }
+
+    @Test func `hiding file names reclaims the space they used`() {
+        let named = TrayItemMetrics(thumbnailSize: 52, showsFilename: true)
+        let bare = TrayItemMetrics(thumbnailSize: 52, showsFilename: false)
+
+        #expect(bare.expandedHeight < named.expandedHeight)
+    }
+
+    @Test func `bigger icons mean fewer fit before the shelf scrolls`() {
+        let small = TrayItemMetrics(thumbnailSize: 36, showsFilename: true)
+        let large = TrayItemMetrics(thumbnailSize: 88, showsFilename: true)
+
+        // Six 36pt items need 373pt; six 88pt items need 685pt. The shelf at
+        // 32% of this display is 470pt wide.
+        #expect(TrayShape.fits(itemCount: 6, screenWidth: screenWidth, widthFraction: 0.32, item: small))
+        #expect(!TrayShape.fits(itemCount: 6, screenWidth: screenWidth, widthFraction: 0.32, item: large))
+    }
+
+    @Test func `the window is sized for the largest icons the setting allows`() {
+        // The panel never resizes — the shelf animates inside it — so it has to
+        // be tall enough for the biggest setting, not the current one.
+        let largest = TrayItemMetrics(
+            thumbnailSize: TrayMetrics.thumbnailSizeRange.upperBound,
+            showsFilename: true
+        )
+
+        #expect(TrayItemMetrics.maximumExpandedHeight >= largest.expandedHeight)
+        #expect(TrayItemMetrics.maximumExpandedHeight >= TrayItemMetrics.default.expandedHeight)
+    }
+
+    @Test func `a stored icon size outside the range is clamped on the way in`() {
+        let defaults = UserDefaults(suiteName: "TrayTests-\(UUID().uuidString)")!
+        defaults.set(500.0, forKey: "thumbnailSize")
+
+        #expect(SettingsStore(defaults: defaults).thumbnailSize
+            == TrayMetrics.thumbnailSizeRange.upperBound)
     }
 
     // MARK: - Settings
