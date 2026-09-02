@@ -73,7 +73,13 @@ struct TrayAppearanceTests {
         try render("12-black", geometry: notchless, items: 4, state: .expanded, appearance: .black)
         try render("13-black-notched", geometry: notched, items: 3, state: .collapsed, appearance: .black)
 
-        #expect(try FileManager.default.contentsOfDirectory(atPath: output.path).count >= 13)
+        // The flared top corners and the notch clearance only exist on a
+        // notched display, and the outline is off by default.
+        try render("14-notch-clearance", geometry: notched, items: 4, state: .expanded)
+        try render("15-drop-outline", geometry: notchless, items: 0, state: .dragOver, outlined: true)
+        try render("16-outline-with-items", geometry: notched, items: 3, state: .expanded, outlined: true)
+
+        #expect(try FileManager.default.contentsOfDirectory(atPath: output.path).count >= 16)
     }
 
     /// The images the README shows.
@@ -162,7 +168,8 @@ struct TrayAppearanceTests {
         items: Int,
         state: TrayPresentationState,
         selecting indices: [Int] = [],
-        appearance: TrayAppearance = .graphite
+        appearance: TrayAppearance = .graphite,
+        outlined: Bool = false
     ) throws {
         let store = TrayStore()
         store.add(Self.sampleURLs(count: items))
@@ -185,7 +192,7 @@ struct TrayAppearanceTests {
             presenter: presenter,
             selection: selection,
             thumbnails: ThumbnailProvider(),
-            settings: Self.settings(appearance: appearance),
+            settings: Self.settings(appearance: appearance, outlined: outlined),
             geometry: geometry,
             onRemove: { _ in }, onCopy: { _ in }, onClick: { _, _ in },
             onReveal: { _ in }, onQuickLook: { _ in },
@@ -259,9 +266,13 @@ struct TrayAppearanceTests {
         return Array(candidates.prefix(count))
     }
 
-    private static func settings(appearance: TrayAppearance) -> SettingsStore {
+    private static func settings(
+        appearance: TrayAppearance,
+        outlined: Bool = false
+    ) -> SettingsStore {
         let settings = SettingsStore(defaults: emptyDefaults())
         settings.appearance = appearance
+        settings.showsDropOutline = outlined
         return settings
     }
 

@@ -43,6 +43,7 @@ That is the entire product. There is no media player, no clipboard history, no w
 - **Nothing moves on disk.** The shelf holds a reference to the file, not a copy. Your photo stays on the Desktop the whole time it is sitting in the tray.
 - **Drag them back out into anything.** A Finder window, a Save dialog, an upload field, another app. It is a real macOS drag, so every destination that takes a file takes this one.
 - **Or use the keyboard.** Click an item and press Delete to take it off the shelf, Space to Quick Look it, ⌘C to copy it, ⌘V to paste files in from anywhere. ⌘-click picks out several, ⌘A takes the lot, arrow keys walk along, Escape closes.
+- **It fits around the notch.** Nothing the shelf shows sits under the camera housing — the housing is a hole in the display, not a dark rectangle, so anything drawn there is simply gone. The shelf's walls flare outwards where they meet the top edge, the same move the hardware makes where the notch meets the bezel.
 - **It knows about the notch.** On a MacBook with a camera housing the closed shelf *is* the housing — same width, same height, hanging off the same edge. On any other display it is a small capsule in the same place. Both are measured from the display, never hardcoded, so external monitors and scaling changes are just other numbers.
 - **Every display gets one.** Drag toward the top of your second monitor and that monitor's shelf answers. Connect or disconnect a screen and the shelves follow.
 - **Three surfaces.** Graphite by default. Light, if you would rather the shelf sat with a pale desktop than against it. Or pitch black — the same black as the camera housing, with nothing showing through, so on a MacBook the shelf reads as the notch itself growing.
@@ -64,7 +65,7 @@ That is the entire product. There is no media player, no clipboard history, no w
 
 Four pages, and most of them you will open once. General has Launch at Login and the menu bar icon; Tray has what opens the shelf, how long it waits before closing, and whether file names show. Opening Tray while it is already running opens this window — an app with no Dock icon has to have a front door somewhere.
 
-By default the shelf closes the moment the pointer leaves, and a tray you have clicked into waits for a click elsewhere so that reaching for the keyboard does not close it. Both are settings: *Close after* goes up to three seconds, and *Stay open after a click* turns the second behaviour off entirely. *Surface* picks between the three looks.
+By default the shelf closes the moment the pointer leaves, and a tray you have clicked into waits for a click elsewhere so that reaching for the keyboard does not close it. Both are settings: *Close after* goes up to three seconds, and *Stay open after a click* turns the second behaviour off entirely. *Surface* picks between the three looks, *Width* sets how much of the screen the shelf spans, and *Outline the drop area* adds a dashed border showing where a dropped file will land.
 
 The Privacy page is the one worth a look. It is the same page other menu bar apps use to explain which permissions they need — except that Tray's version is a list of the ones it does not.
 

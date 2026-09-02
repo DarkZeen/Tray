@@ -54,7 +54,12 @@ struct TrayContentView: View {
                 .opacity(isOpen ? 0 : 1)
 
             expandedContents
-                .frame(width: shape.width, height: shape.height)
+                .frame(width: shape.width, height: shape.height - shape.notchInset)
+                // Everything the shelf shows sits below the camera housing.
+                // Nothing drawn under the notch is visible — it is a hole in
+                // the display, not a dark rectangle — so without this the top
+                // of every thumbnail in the middle of the shelf is missing.
+                .padding(.top, shape.notchInset)
                 .opacity(isOpen ? 1 : 0)
         }
         .frame(width: shape.width, height: shape.height)
@@ -64,7 +69,10 @@ struct TrayContentView: View {
         .clipShape(TraySurface(cornerRadius: shape.cornerRadius))
         .traySurface(
             cornerRadius: shape.cornerRadius,
-            isEmphasised: presenter.state.isDropTargetActive
+            topFlare: shape.topFlare,
+            isEmphasised: presenter.state.isDropTargetActive,
+            showsDropOutline: settings.showsDropOutline && isOpen,
+            notchInset: shape.notchInset
         )
         // Scaled from the top, because that is where the object is attached.
         // Scaling from the centre would lift it off the edge of the screen.
@@ -83,7 +91,11 @@ struct TrayContentView: View {
 
     private var shape: TrayShape {
         if isOpen {
-            return .expanded(itemCount: store.count, screenWidth: geometry.frame.width)
+            return .expanded(
+                screenWidth: geometry.frame.width,
+                widthFraction: settings.trayWidthFraction,
+                notchHeight: geometry.notchSize?.height ?? 0
+            )
         }
         return .collapsed(notchSize: geometry.notchSize, isEmpty: store.isEmpty)
     }
@@ -156,7 +168,11 @@ struct TrayContentView: View {
     /// of a stray trackpad gesture nudging the shelf sideways.
     @ViewBuilder
     private var shelf: some View {
-        if TrayShape.fits(itemCount: store.count, screenWidth: geometry.frame.width) {
+        if TrayShape.fits(
+            itemCount: store.count,
+            screenWidth: geometry.frame.width,
+            widthFraction: settings.trayWidthFraction
+        ) {
             itemRow
         } else {
             ScrollView(.horizontal) {

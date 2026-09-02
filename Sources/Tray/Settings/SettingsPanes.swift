@@ -216,6 +216,46 @@ struct TrayPane: View {
                     .pickerStyle(.menu)
                     .frame(width: 148)
                 }
+
+                SettingsRowDivider()
+
+                SettingsRow(
+                    icon: "arrow.left.and.right",
+                    title: "Width",
+                    description: "How wide the shelf opens, as a share of the screen."
+                ) {
+                    HStack(spacing: 8) {
+                        Slider(
+                            value: Binding(
+                                get: { settings.trayWidthFraction },
+                                set: { settings.trayWidthFraction = $0 }
+                            ),
+                            in: SettingsStore.widthFractionRange
+                        )
+                        .frame(width: 110)
+
+                        Text("\(Int((settings.trayWidthFraction * 100).rounded()))%")
+                            .font(.system(size: 11))
+                            .foregroundStyle(.secondary)
+                            .monospacedDigit()
+                            .frame(width: 34, alignment: .trailing)
+                    }
+                }
+
+                SettingsRowDivider()
+
+                SettingsRow(
+                    icon: "rectangle.dashed",
+                    title: "Outline the drop area",
+                    description: "A dashed border showing where a dropped file will land."
+                ) {
+                    Toggle("", isOn: Binding(
+                        get: { settings.showsDropOutline },
+                        set: { settings.showsDropOutline = $0 }
+                    ))
+                    .toggleStyle(.switch)
+                    .controlSize(.small)
+                }
             }
         }
     }

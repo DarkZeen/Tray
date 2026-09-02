@@ -101,6 +101,11 @@ struct TrayPalette: Equatable, Sendable {
         primaryInk.opacity(opacity)
     }
 
+    /// The dashed outline around the drop area, when it is switched on.
+    var dropOutlineInk: Color {
+        appearance == .light ? .black.opacity(0.26) : .white.opacity(0.34)
+    }
+
     /// Fill behind an item under the pointer.
     func hoverFill(_ isHovering: Bool) -> Color {
         guard isHovering else { return .clear }

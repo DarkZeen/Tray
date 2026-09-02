@@ -79,12 +79,23 @@ final class TrayWindowController {
     /// The window is the largest the tray can ever be, plus room for its
     /// shadow, anchored to the top edge of this display (§9, §87).
     private static func panelFrame(for geometry: ScreenGeometry) -> NSRect {
-        let width = TrayMetrics.maximumWidth(forScreenWidth: geometry.frame.width)
-            + TrayMetrics.panelPadding * 2
+        // Sized for the widest the shelf is ever allowed to be, plus room for
+        // its flares and its shadow. The window never resizes — the shelf
+        // animates inside it — so it has to be big enough for the largest
+        // setting, not for the current one.
+        let widest = TrayMetrics.expandedWidth(
+            forScreenWidth: geometry.frame.width,
+            fraction: SettingsStore.widthFractionRange.upperBound
+        )
+        let width = min(
+            geometry.frame.width,
+            widest + (TrayMetrics.panelPadding + TrayMetrics.topFlare) * 2
+        )
 
         // The debug overlay hangs below the tray and would otherwise be clipped
         // by the window it lives in — a diagnostic you cannot read is not one.
         let height = TrayMetrics.expandedHeight
+            + (geometry.notchSize?.height ?? 0)
             + TrayMetrics.panelPadding
             + (Diagnostics.isDebugOverlayEnabled ? 140 : 0)
 

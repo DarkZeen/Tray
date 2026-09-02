@@ -6,6 +6,15 @@ import Observation
 /// Deliberately short. Every option here changes something the user can point
 /// at in the tray itself; there is no settings screen full of knobs for
 /// preferences nobody has.
+/// Settings only ever record a *choice*.
+///
+/// Every write is guarded on the value actually changing. SwiftUI's
+/// `Binding(get:set:)` setters fire during view updates as well as on user
+/// input, so without the guard, merely opening the settings window writes every
+/// default on the page to disk as though the user had picked it — and a slider
+/// writes a clamped value, which is how a setting nobody touched ends up at the
+/// end of its range. It is the same failure as the Launch at Login one: an app
+/// should not claim a preference that was never expressed.
 @Observable
 final class SettingsStore {
     /// What is allowed to open the tray (§12, §13).
@@ -34,6 +43,8 @@ final class SettingsStore {
         static let showsFileNames = "showsFileNames"
         static let staysOpenAfterClick = "staysOpenAfterClick"
         static let appearance = "appearance"
+        static let trayWidthFraction = "trayWidthFraction"
+        static let showsDropOutline = "showsDropOutline"
     }
 
     private let defaults: UserDefaults
@@ -51,6 +62,7 @@ final class SettingsStore {
     /// never expressed.
     var launchAtLoginIntent: Bool? {
         didSet {
+            guard launchAtLoginIntent != oldValue else { return }
             if let launchAtLoginIntent {
                 defaults.set(launchAtLoginIntent, forKey: Key.launchAtLogin)
             } else {
@@ -60,11 +72,17 @@ final class SettingsStore {
     }
 
     var showsMenuBarIcon: Bool {
-        didSet { defaults.set(showsMenuBarIcon, forKey: Key.showsMenuBarIcon) }
+        didSet {
+            guard showsMenuBarIcon != oldValue else { return }
+            defaults.set(showsMenuBarIcon, forKey: Key.showsMenuBarIcon)
+        }
     }
 
     var activation: Activation {
-        didSet { defaults.set(activation.rawValue, forKey: Key.activation) }
+        didSet {
+            guard activation != oldValue else { return }
+            defaults.set(activation.rawValue, forKey: Key.activation)
+        }
     }
 
     /// Seconds the tray waits after the pointer leaves before closing (§17).
@@ -74,11 +92,17 @@ final class SettingsStore {
     /// looked away is in the way. The delay is still available for anyone who
     /// wants the grace period §17 describes.
     var autoCollapseDelay: Double {
-        didSet { defaults.set(autoCollapseDelay, forKey: Key.autoCollapseDelay) }
+        didSet {
+            guard autoCollapseDelay != oldValue else { return }
+            defaults.set(autoCollapseDelay, forKey: Key.autoCollapseDelay)
+        }
     }
 
     var showsFileNames: Bool {
-        didSet { defaults.set(showsFileNames, forKey: Key.showsFileNames) }
+        didSet {
+            guard showsFileNames != oldValue else { return }
+            defaults.set(showsFileNames, forKey: Key.showsFileNames)
+        }
     }
 
     /// Whether clicking into the tray pins it open until it is dismissed.
@@ -88,13 +112,40 @@ final class SettingsStore {
     /// reaching for. Off, the pointer leaving always closes it, and the
     /// keyboard only works while you are hovering.
     var staysOpenAfterClick: Bool {
-        didSet { defaults.set(staysOpenAfterClick, forKey: Key.staysOpenAfterClick) }
+        didSet {
+            guard staysOpenAfterClick != oldValue else { return }
+            defaults.set(staysOpenAfterClick, forKey: Key.staysOpenAfterClick)
+        }
     }
 
     /// How the tray surface is painted (§49).
     var appearance: TrayAppearance {
-        didSet { defaults.set(appearance.rawValue, forKey: Key.appearance) }
+        didSet {
+            guard appearance != oldValue else { return }
+            defaults.set(appearance.rawValue, forKey: Key.appearance)
+        }
     }
+
+    /// How wide the open shelf is, as a share of the display's width.
+    ///
+    /// Stored as a fraction rather than as points so that one setting means the
+    /// same thing on a laptop screen and on a 5K display.
+    var trayWidthFraction: Double {
+        didSet {
+            guard trayWidthFraction != oldValue else { return }
+            defaults.set(trayWidthFraction, forKey: Key.trayWidthFraction)
+        }
+    }
+
+    /// A dashed outline marking where a drop will land.
+    var showsDropOutline: Bool {
+        didSet {
+            guard showsDropOutline != oldValue else { return }
+            defaults.set(showsDropOutline, forKey: Key.showsDropOutline)
+        }
+    }
+
+    static let widthFractionRange: ClosedRange<Double> = 0.18...0.95
 
     static let collapseDelayRange: ClosedRange<Double> = 0...3.0
 
@@ -111,6 +162,8 @@ final class SettingsStore {
             Key.autoCollapseDelay: 0.0,
             Key.staysOpenAfterClick: true,
             Key.appearance: TrayAppearance.graphite.rawValue,
+            Key.trayWidthFraction: 0.32,
+            Key.showsDropOutline: false,
         ])
 
         // `object(forKey:)` rather than `bool(forKey:)`, so an absent key
@@ -122,8 +175,17 @@ final class SettingsStore {
         staysOpenAfterClick = defaults.bool(forKey: Key.staysOpenAfterClick)
         activation = Activation(rawValue: defaults.string(forKey: Key.activation) ?? "")
             ?? .both
+        showsDropOutline = defaults.bool(forKey: Key.showsDropOutline)
         appearance = TrayAppearance(rawValue: defaults.string(forKey: Key.appearance) ?? "")
             ?? .graphite
+
+        // Clamped on the way in: a stored value from an older build, or one
+        // edited by hand, must not produce a shelf wider than the display.
+        let storedWidth = defaults.double(forKey: Key.trayWidthFraction)
+        trayWidthFraction = min(
+            max(storedWidth, Self.widthFractionRange.lowerBound),
+            Self.widthFractionRange.upperBound
+        )
 
         Diagnostics.logger("settings").debug(
             """

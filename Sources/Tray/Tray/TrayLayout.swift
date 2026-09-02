@@ -25,9 +25,15 @@ enum TrayMetrics {
     static let handleWidth: CGFloat = 56
     static let handleHeight: CGFloat = 5
 
-    /// The shelf never spans the screen (§20).
-    static func maximumWidth(forScreenWidth screenWidth: CGFloat) -> CGFloat {
-        min(720, screenWidth * 0.60)
+    /// How wide the open shelf is, as a share of the display it is on.
+    ///
+    /// A fraction rather than a number of points, so one setting behaves
+    /// sensibly on a laptop screen and a 5K display at once.
+    static func expandedWidth(forScreenWidth screenWidth: CGFloat, fraction: Double) -> CGFloat {
+        let requested = screenWidth * fraction
+        // Never the full span: the shelf has to read as an object on the
+        // screen rather than as a second menu bar (§20).
+        return min(max(requested, minimumWidth), screenWidth - 48)
     }
 
     // MARK: Corners
@@ -37,6 +43,22 @@ enum TrayMetrics {
     /// interpolated between them, never cut.
     static let collapsedCornerRadius: CGFloat = 14
     static let expandedCornerRadius: CGFloat = 22
+
+    /// How far the open shelf flares outwards where its walls meet the top edge
+    /// of the screen.
+    ///
+    /// A concave fillet rather than a square corner, so the shelf reads as
+    /// carved out of the display's edge rather than taped to it — the same
+    /// trick the hardware plays where the notch meets the bezel. Zero while
+    /// closed, because a closed tray on a notched Mac *is* the housing and must
+    /// match its silhouette exactly.
+    static let topFlare: CGFloat = 11
+
+    /// The dashed outline some people want around the drop area, inset from the
+    /// surface edge.
+    static let dropOutlineInset: CGFloat = 7
+    static let dropOutlineDash: CGFloat = 5
+    static let dropOutlineGap: CGFloat = 4
 
     // MARK: Items
 
@@ -82,8 +104,19 @@ struct TrayShape: Equatable {
     var width: CGFloat
     var height: CGFloat
     var cornerRadius: CGFloat
+    var topFlare: CGFloat = 0
+
+    /// Space kept clear at the top of the open shelf so the camera housing does
+    /// not sit over the contents.
+    ///
+    /// Nothing drawn under the notch is visible — it is a hole in the display,
+    /// not a dark rectangle — so without this the top third of every thumbnail
+    /// in the middle of the shelf is simply missing.
+    var notchInset: CGFloat = 0
 
     static func collapsed(notchSize: CGSize?, isEmpty: Bool) -> TrayShape {
+        // No flare while closed: on a notched Mac the closed tray is the
+        // housing, and the housing has no flare.
         // On a notched display the closed tray *is* the notch: same width, same
         // height, so it reads as part of the hardware rather than a widget
         // parked underneath it (§9).
@@ -120,21 +153,25 @@ struct TrayShape: Equatable {
     }
 
     /// Whether the items fit, or whether the shelf has to start scrolling (§20).
-    static func fits(itemCount: Int, screenWidth: CGFloat) -> Bool {
+    static func fits(itemCount: Int, screenWidth: CGFloat, widthFraction: Double) -> Bool {
         contentWidth(itemCount: itemCount)
-            <= TrayMetrics.maximumWidth(forScreenWidth: screenWidth)
+            <= TrayMetrics.expandedWidth(forScreenWidth: screenWidth, fraction: widthFraction)
     }
 
-    static func expanded(itemCount: Int, screenWidth: CGFloat) -> TrayShape {
-        let width = min(
-            max(contentWidth(itemCount: itemCount), TrayMetrics.minimumWidth),
-            TrayMetrics.maximumWidth(forScreenWidth: screenWidth)
-        )
-
-        return TrayShape(
-            width: width,
-            height: TrayMetrics.expandedHeight,
-            cornerRadius: TrayMetrics.expandedCornerRadius
+    static func expanded(
+        screenWidth: CGFloat,
+        widthFraction: Double,
+        notchHeight: CGFloat
+    ) -> TrayShape {
+        TrayShape(
+            width: TrayMetrics.expandedWidth(
+                forScreenWidth: screenWidth,
+                fraction: widthFraction
+            ),
+            height: TrayMetrics.expandedHeight + notchHeight,
+            cornerRadius: TrayMetrics.expandedCornerRadius,
+            topFlare: TrayMetrics.topFlare,
+            notchInset: notchHeight
         )
     }
 

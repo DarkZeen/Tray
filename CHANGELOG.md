@@ -8,6 +8,11 @@ All notable changes to Tray are recorded here. The format follows
 
 ### Added
 
+- *Width*, which sets how much of the screen the open shelf spans. Stored as a
+  share of the display rather than a number of points, so one setting means the
+  same thing on a laptop screen and a 5K display.
+- *Outline the drop area*, a dashed border marking where a dropped file will
+  land. It starts below the camera housing so the whole border is visible.
 - Three surfaces, chosen in Settings. Graphite is the default; Light flips the
   ink so it stays legible; Pitch black is fully opaque and the same black as
   the camera housing, so on a notched Mac the shelf reads as the notch growing
@@ -30,6 +35,10 @@ All notable changes to Tray are recorded here. The format follows
 
 ### Changed
 
+- The open shelf's walls flare outwards where they meet the top edge of the
+  screen, instead of stopping at a square corner. The closed tray keeps its
+  square silhouette, because on a notched Mac it *is* the camera housing and
+  has to match it exactly.
 - The shelf now closes as the pointer leaves rather than after a grace period.
   *Close after* in Settings still goes up to three seconds for anyone who wants
   the old behaviour, and a tray you have clicked into stays open regardless —
@@ -37,6 +46,14 @@ All notable changes to Tray are recorded here. The format follows
 
 ### Fixed
 
+- Settings recorded preferences nobody chose. SwiftUI's binding setters fire
+  during view updates as well as on input, so merely opening the settings
+  window wrote every value on the page to disk — and a slider wrote a *clamped*
+  value, which is how a setting nobody touched ended up pinned to the end of
+  its range. Every write is now guarded on the value actually changing.
+- The open shelf's contents sat under the camera housing on a notched Mac,
+  where nothing is visible, cutting the top off every thumbnail in the middle
+  of the shelf.
 - The *Close after* setting had no effect at all. The presenter read a constant
   instead of the stored value, so the slider moved and nothing happened.
 - Tray no longer records a Launch at Login preference the user never expressed.
