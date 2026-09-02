@@ -17,6 +17,14 @@ jobs:
     name: Build, notarize and publish
     runs-on: macos-26
 
+    # Lifted to the job so that step-level `if:` conditions can see them. A
+    # step's own `env:` block is not in scope when its `if:` is evaluated, so
+    # gating on it there silently skips the step even when the secret is set.
+    env:
+      APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+      APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+      KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+
     steps:
       - uses: actions/checkout@v4
         with:
@@ -47,10 +55,6 @@ jobs:
       - name: Import the signing certificate
         id: signing
         if: env.APPLE_CERTIFICATE != ''
-        env:
-          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
-          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
         run: |
           KEYCHAIN="$RUNNER_TEMP/signing.keychain-db"
           echo "$APPLE_CERTIFICATE" | base64 --decode > "$RUNNER_TEMP/certificate.p12"
