@@ -108,7 +108,8 @@ struct TrayContentView: View {
                 screenWidth: geometry.frame.width,
                 widthFraction: settings.trayWidthFraction,
                 notchHeight: geometry.notchSize?.height ?? 0,
-                item: settings.itemMetrics
+                item: settings.itemMetrics,
+                height: settings.trayHeight
             )
         }
         return .collapsed(notchSize: geometry.notchSize, isEmpty: store.isEmpty)

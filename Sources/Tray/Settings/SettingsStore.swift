@@ -48,6 +48,7 @@ final class SettingsStore {
         static let thumbnailSize = "thumbnailSize"
         static let expandsAfterDrop = "expandsAfterDrop"
         static let dropOutlineInset = "dropOutlineInset"
+        static let trayHeight = "trayHeight"
     }
 
     private let defaults: UserDefaults
@@ -173,6 +174,15 @@ final class SettingsStore {
         }
     }
 
+    /// How tall the open shelf is, in points. A floor: content that needs more
+    /// room still gets it.
+    var trayHeight: Double {
+        didSet {
+            guard trayHeight != oldValue else { return }
+            defaults.set(trayHeight, forKey: Key.trayHeight)
+        }
+    }
+
     static let widthFractionRange: ClosedRange<Double> = 0.18...0.95
 
     /// The two settings that decide how big an item is, as one value.
@@ -200,6 +210,7 @@ final class SettingsStore {
             Key.thumbnailSize: TrayMetrics.defaultThumbnailSize,
             Key.expandsAfterDrop: true,
             Key.dropOutlineInset: TrayMetrics.defaultDropOutlineInset,
+            Key.trayHeight: TrayItemMetrics.default.expandedHeight,
         ])
 
         // `object(forKey:)` rather than `bool(forKey:)`, so an absent key
@@ -228,6 +239,12 @@ final class SettingsStore {
         thumbnailSize = min(
             max(storedThumbnail, TrayMetrics.thumbnailSizeRange.lowerBound),
             TrayMetrics.thumbnailSizeRange.upperBound
+        )
+
+        let storedHeight = defaults.double(forKey: Key.trayHeight)
+        trayHeight = min(
+            max(storedHeight, TrayMetrics.trayHeightRange.lowerBound),
+            TrayMetrics.trayHeightRange.upperBound
         )
 
         let storedInset = defaults.double(forKey: Key.dropOutlineInset)

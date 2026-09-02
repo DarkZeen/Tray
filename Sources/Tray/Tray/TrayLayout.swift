@@ -24,6 +24,13 @@ enum TrayMetrics {
     static let handleWidth: CGFloat = 56
     static let handleHeight: CGFloat = 5
 
+    /// How tall the open shelf is, in points.
+    ///
+    /// Points rather than a share of the screen, unlike the width: the shelf
+    /// hangs from the top edge and is small next to the display, so a fraction
+    /// of the screen height would be a strange thing to reason about.
+    static let trayHeightRange: ClosedRange<Double> = 80...320
+
     /// How wide the open shelf is, as a share of the display it is on.
     ///
     /// A fraction rather than a number of points, so one setting behaves
@@ -133,12 +140,22 @@ struct TrayItemMetrics: Equatable, Sendable {
     }
 
     /// The tallest the shelf can get, used to size the window once rather than
-    /// resizing it whenever the setting moves.
+    /// resizing it whenever a setting moves.
     static var maximumExpandedHeight: CGFloat {
-        TrayItemMetrics(
+        let byContent = TrayItemMetrics(
             thumbnailSize: TrayMetrics.thumbnailSizeRange.upperBound,
             showsFilename: true
         ).expandedHeight
+        return max(byContent, TrayMetrics.trayHeightRange.upperBound)
+    }
+
+    /// The shelf's height for a requested value.
+    ///
+    /// The request is a floor, not a ceiling. Content that needs more room gets
+    /// it — a shelf shorter than the icons it is holding would clip them, and
+    /// no setting should be able to ask for that.
+    func expandedHeight(requesting requested: Double) -> CGFloat {
+        max(requested, expandedHeight)
     }
 }
 
@@ -210,14 +227,15 @@ struct TrayShape: Equatable {
         screenWidth: CGFloat,
         widthFraction: Double,
         notchHeight: CGFloat,
-        item: TrayItemMetrics = .default
+        item: TrayItemMetrics = .default,
+        height requestedHeight: Double = 0
     ) -> TrayShape {
         TrayShape(
             width: TrayMetrics.expandedWidth(
                 forScreenWidth: screenWidth,
                 fraction: widthFraction
             ),
-            height: item.expandedHeight + notchHeight,
+            height: item.expandedHeight(requesting: requestedHeight) + notchHeight,
             cornerRadius: TrayMetrics.expandedCornerRadius,
             topFlare: TrayMetrics.topFlare,
             notchInset: notchHeight

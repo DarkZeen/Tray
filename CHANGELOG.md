@@ -18,6 +18,9 @@ All notable changes to Tray are recorded here. The format follows
 - *Icon size*, which sets how large each file is drawn on the shelf. Thumbnails
   are re-rendered at the chosen size rather than scaled up, and the shelf grows
   to fit them.
+- *Height*, which sets how tall the open shelf is. It is a floor rather than a
+  fixed size: icons large enough to need more room still get it, because a
+  shelf shorter than what it is holding would clip it.
 - *Width*, which sets how much of the screen the open shelf spans. Stored as a
   share of the display rather than a number of points, so one setting means the
   same thing on a laptop screen and a 5K display.

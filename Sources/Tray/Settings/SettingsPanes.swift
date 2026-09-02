@@ -108,9 +108,9 @@ struct TrayPane: View {
     let settings: SettingsStore
 
     var body: some View {
-        SettingsPaneLayout(lead: "What opens the shelf, how long it stays, and how much it shows.") {
+        SettingsPaneLayout(lead: "What opens the shelf, how big it is, and how it behaves once it is up.") {
             SettingsCard(title: "Opening") {
-                SettingsRow(
+SettingsRow(
                     icon: "cursorarrow.motionlines",
                     title: "Open the tray with",
                     description: description(for: settings.activation)
@@ -128,11 +128,92 @@ struct TrayPane: View {
                 }
             }
 
+            // Size sits second rather than inside Appearance: it is the group
+            // people come here to change, and burying it under a scroll is how
+            // a setting goes unfound.
+            SettingsCard(
+                title: "Size",
+                footnote: "Height is a floor — icons large enough to need more room still get it."
+            ) {
+SettingsRow(
+                    icon: "arrow.left.and.right",
+                    title: "Width",
+                    description: "How wide the shelf opens, as a share of the screen."
+                ) {
+                    HStack(spacing: 8) {
+                        Slider(
+                            value: Binding(
+                                get: { settings.trayWidthFraction },
+                                set: { settings.trayWidthFraction = $0 }
+                            ),
+                            in: SettingsStore.widthFractionRange
+                        )
+                        .frame(width: 110)
+
+                        Text("\(Int((settings.trayWidthFraction * 100).rounded()))%")
+                            .font(.system(size: 11))
+                            .foregroundStyle(.secondary)
+                            .monospacedDigit()
+                            .frame(width: 34, alignment: .trailing)
+                    }
+                }
+
+                SettingsRowDivider()
+
+SettingsRow(
+                    icon: "arrow.up.and.down",
+                    title: "Height",
+                    description: heightDescription
+                ) {
+                    HStack(spacing: 8) {
+                        Slider(
+                            value: Binding(
+                                get: { settings.trayHeight },
+                                set: { settings.trayHeight = $0 }
+                            ),
+                            in: TrayMetrics.trayHeightRange
+                        )
+                        .frame(width: 110)
+
+                        Text("\(Int(effectiveHeight.rounded()))pt")
+                            .font(.system(size: 11))
+                            .foregroundStyle(.secondary)
+                            .monospacedDigit()
+                            .frame(width: 34, alignment: .trailing)
+                    }
+                }
+
+                SettingsRowDivider()
+
+SettingsRow(
+                    icon: "square.resize",
+                    title: "Icon size",
+                    description: "How large each file is drawn on the shelf."
+                ) {
+                    HStack(spacing: 8) {
+                        Slider(
+                            value: Binding(
+                                get: { settings.thumbnailSize },
+                                set: { settings.thumbnailSize = $0 }
+                            ),
+                            in: TrayMetrics.thumbnailSizeRange
+                        )
+                        .frame(width: 110)
+
+                        Text("\(Int(settings.thumbnailSize.rounded()))pt")
+                            .font(.system(size: 11))
+                            .foregroundStyle(.secondary)
+                            .monospacedDigit()
+                            .frame(width: 34, alignment: .trailing)
+                    }
+                }
+            }
+
             SettingsCard(
                 title: "Behaviour",
                 footnote: "The shelf holds up to \(TrayStore.capacity) items and always empties when Tray quits."
             ) {
-                SettingsRow(
+SettingsRow(
                     icon: "clock.arrow.circlepath",
                     title: "Close after",
                     description: settings.autoCollapseDelay < SettingsStore.immediateThreshold
@@ -163,9 +244,7 @@ struct TrayPane: View {
 
                 SettingsRowDivider()
 
-                SettingsRowDivider()
-
-                SettingsRow(
+SettingsRow(
                     icon: "arrow.down.to.line",
                     title: "Open after a drop",
                     description: settings.expandsAfterDrop
@@ -182,7 +261,7 @@ struct TrayPane: View {
 
                 SettingsRowDivider()
 
-                SettingsRow(
+SettingsRow(
                     icon: "hand.tap",
                     title: "Stay open after a click",
                     description: settings.staysOpenAfterClick
@@ -196,28 +275,13 @@ struct TrayPane: View {
                     .toggleStyle(.switch)
                     .controlSize(.small)
                 }
-
-                SettingsRowDivider()
-
-                SettingsRow(
-                    icon: "textformat",
-                    title: "Show file names",
-                    description: "Names sit under each thumbnail."
-                ) {
-                    Toggle("", isOn: Binding(
-                        get: { settings.showsFileNames },
-                        set: { settings.showsFileNames = $0 }
-                    ))
-                    .toggleStyle(.switch)
-                    .controlSize(.small)
-                }
             }
 
             SettingsCard(
                 title: "Appearance",
                 footnote: "Tray keeps its own look rather than following the system between light and dark."
             ) {
-                SettingsRow(
+SettingsRow(
                     icon: "circle.lefthalf.filled",
                     title: "Surface",
                     description: settings.appearance.note
@@ -236,57 +300,22 @@ struct TrayPane: View {
 
                 SettingsRowDivider()
 
-                SettingsRow(
-                    icon: "arrow.left.and.right",
-                    title: "Width",
-                    description: "How wide the shelf opens, as a share of the screen."
+SettingsRow(
+                    icon: "textformat",
+                    title: "Show file names",
+                    description: "Names sit under each thumbnail."
                 ) {
-                    HStack(spacing: 8) {
-                        Slider(
-                            value: Binding(
-                                get: { settings.trayWidthFraction },
-                                set: { settings.trayWidthFraction = $0 }
-                            ),
-                            in: SettingsStore.widthFractionRange
-                        )
-                        .frame(width: 110)
-
-                        Text("\(Int((settings.trayWidthFraction * 100).rounded()))%")
-                            .font(.system(size: 11))
-                            .foregroundStyle(.secondary)
-                            .monospacedDigit()
-                            .frame(width: 34, alignment: .trailing)
-                    }
+                    Toggle("", isOn: Binding(
+                        get: { settings.showsFileNames },
+                        set: { settings.showsFileNames = $0 }
+                    ))
+                    .toggleStyle(.switch)
+                    .controlSize(.small)
                 }
 
                 SettingsRowDivider()
 
-                SettingsRow(
-                    icon: "square.resize",
-                    title: "Icon size",
-                    description: "How large each file is drawn on the shelf."
-                ) {
-                    HStack(spacing: 8) {
-                        Slider(
-                            value: Binding(
-                                get: { settings.thumbnailSize },
-                                set: { settings.thumbnailSize = $0 }
-                            ),
-                            in: TrayMetrics.thumbnailSizeRange
-                        )
-                        .frame(width: 110)
-
-                        Text("\(Int(settings.thumbnailSize.rounded()))pt")
-                            .font(.system(size: 11))
-                            .foregroundStyle(.secondary)
-                            .monospacedDigit()
-                            .frame(width: 34, alignment: .trailing)
-                    }
-                }
-
-                SettingsRowDivider()
-
-                SettingsRow(
+SettingsRow(
                     icon: "rectangle.dashed",
                     title: "Outline the drop area",
                     description: "A dashed border showing where a dropped file will land."
@@ -327,6 +356,21 @@ struct TrayPane: View {
                 }
             }
         }
+    }
+
+    /// What the shelf's height actually works out to.
+    ///
+    /// The setting is a floor, so icons large enough to need more room win.
+    /// Reporting the request rather than the result would make the slider look
+    /// broken at the bottom of its range.
+    private var effectiveHeight: CGFloat {
+        settings.itemMetrics.expandedHeight(requesting: settings.trayHeight)
+    }
+
+    private var heightDescription: String {
+        effectiveHeight > settings.trayHeight
+            ? "How tall the shelf opens. Raised here to fit the current icon size."
+            : "How tall the shelf opens."
     }
 
     private func description(for activation: SettingsStore.Activation) -> String {

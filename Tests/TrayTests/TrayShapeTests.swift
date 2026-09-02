@@ -56,6 +56,75 @@ struct TrayShapeTests {
         #expect(abs(bigScreen.width / 5120 - laptop.width / 1470) < 0.001)
     }
 
+    // MARK: - Height
+
+    @Test func `the shelf opens to the height it was asked for`() {
+        let shape = TrayShape.expanded(
+            screenWidth: screenWidth,
+            widthFraction: 0.32,
+            notchHeight: 0,
+            item: .default,
+            height: 220
+        )
+
+        #expect(shape.height == 220)
+    }
+
+    @Test func `a taller setting gives a taller shelf`() {
+        func height(_ requested: Double) -> CGFloat {
+            TrayShape.expanded(
+                screenWidth: screenWidth,
+                widthFraction: 0.32,
+                notchHeight: 0,
+                item: .default,
+                height: requested
+            ).height
+        }
+
+        #expect(height(260) > height(120))
+    }
+
+    @Test func `the height setting is a floor, not a ceiling`() {
+        // A shelf shorter than the icons it holds would clip them, and no
+        // setting should be able to ask for that.
+        let large = TrayItemMetrics(thumbnailSize: 88, showsFilename: true)
+        let shape = TrayShape.expanded(
+            screenWidth: screenWidth,
+            widthFraction: 0.32,
+            notchHeight: 0,
+            item: large,
+            height: 80
+        )
+
+        #expect(shape.height == large.expandedHeight)
+        #expect(shape.height > 80)
+    }
+
+    @Test func `height and notch clearance add up rather than compete`() {
+        let shape = TrayShape.expanded(
+            screenWidth: screenWidth,
+            widthFraction: 0.32,
+            notchHeight: notchHeight,
+            item: .default,
+            height: 200
+        )
+
+        #expect(shape.height == 200 + notchHeight)
+        #expect(shape.notchInset == notchHeight)
+    }
+
+    @Test func `the window is sized for the tallest shelf the settings allow`() {
+        #expect(TrayItemMetrics.maximumExpandedHeight >= TrayMetrics.trayHeightRange.upperBound)
+    }
+
+    @Test func `a stored height outside the range is clamped on the way in`() {
+        let defaults = UserDefaults(suiteName: "TrayTests-\(UUID().uuidString)")!
+        defaults.set(9000.0, forKey: "trayHeight")
+
+        #expect(SettingsStore(defaults: defaults).trayHeight
+            == TrayMetrics.trayHeightRange.upperBound)
+    }
+
     // MARK: - Notch clearance
 
     @Test func `a notched display gets its contents pushed clear of the housing`() {
