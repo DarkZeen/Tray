@@ -9,8 +9,13 @@ dist/
 # macOS
 .DS_Store
 
-# Local agent tooling — not part of the app
+# Local agent tooling — not part of the app.
+# `.github/` itself stays: the workflows live there.
 .agents/
 .claude/
+.codex/
 .impeccable/
+.github/agents/
+.github/hooks/
+.github/skills/
 skills-lock.json
