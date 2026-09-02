@@ -46,6 +46,13 @@ All notable changes to Tray are recorded here. The format follows
 
 ### Changed
 
+- The shelf closes faster than it opens. Closing used to be the slowest motion
+  in the app, sitting on the exit of the most-seen element — which was fine
+  when a grace period ran before it, and reads as lag now that it starts the
+  moment the pointer leaves.
+- Items arrive from below rather than growing from nothing in place, and at a
+  gentler scale. Files travel upward into the tray, so that is the direction an
+  arriving one comes from.
 - The open shelf's walls flare outwards where they meet the top edge of the
   screen, instead of stopping at a square corner. The closed tray keeps its
   square silhouette, because on a notched Mac it *is* the camera housing and
@@ -57,6 +64,15 @@ All notable changes to Tray are recorded here. The format follows
 
 ### Fixed
 
+- Reduce Motion had no effect until the app was relaunched. The preference was
+  read straight from `NSWorkspace` inside view bodies, so nothing invalidated
+  when it changed. It now travels through the environment, the way the
+  reduced-transparency preference already did.
+- The tray gave no feedback at all until a drag was directly over the drop
+  area. The anticipation step had a value defined for it and no call site.
+- A drop landed with no acknowledgement. The shelf now gives a little as
+  something lands and springs back — two values and an underdamped spring
+  rather than three hand-written keyframes.
 - The shelf could stick open after the pointer left. Two separate causes, both
   of which stopped anything from ever telling the tray the pointer had gone.
   The hover tracking area was sized to the tray and rebuilt every time the tray

@@ -44,14 +44,4 @@ enum TrayPresentationState: Equatable, Sendable {
         if case .draggingItem(let id) = self { return id }
         return nil
     }
-
-    /// The container's scale for this state (§13, §46). Amplitudes stay tiny —
-    /// this should be felt, not watched.
-    var containerScale: CGFloat {
-        switch self {
-        case .collapsed, .expanded: TrayScale.resting
-        case .dragOver: TrayScale.dropTargetActive
-        case .draggingItem: TrayScale.resting
-        }
-    }
 }

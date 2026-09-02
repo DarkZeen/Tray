@@ -28,6 +28,10 @@ struct TrayContentView: View {
     /// the pixels the user can see (§74).
     let onShapeChange: (TrayShape) -> Void
 
+    /// The viewer's motion preference, read here rather than from a static, so
+    /// that switching Reduce Motion takes effect immediately (§50).
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     var body: some View {
         VStack(spacing: 0) {
             tray
@@ -37,6 +41,7 @@ struct TrayContentView: View {
         // The tray keeps its own appearance rather than following the system's
         // (§49). Which one it keeps is now the user's choice.
         .environment(\.trayPalette, palette)
+        .environment(\.trayMotion, motion)
         .environment(\.colorScheme, palette.colorScheme)
     }
 
@@ -77,16 +82,23 @@ struct TrayContentView: View {
         )
         // Scaled from the top, because that is where the object is attached.
         // Scaling from the centre would lift it off the edge of the screen.
-        .scaleEffect(presenter.state.containerScale, anchor: .top)
+        .scaleEffect(presenter.containerScale, anchor: .top)
         .animation(containerAnimation, value: shape)
-        .animation(TrayAnimation.hover, value: palette)
-        .animation(TrayAnimation.hover, value: presenter.state)
+        .animation(motion.appearance, value: palette)
+        .animation(motion.hover, value: presenter.state)
+        // Anticipation as a drag approaches (§13), and the give as one lands
+        // (§46). Both are scale changes on the same property, so they get their
+        // own springs rather than borrowing the pointer's.
+        .animation(motion.hover, value: presenter.isDragApproaching)
+        .animation(motion.dropImpact, value: presenter.isAbsorbingDrop)
         .accessibilityElement(children: .contain)
         .accessibilityLabel(accessibilityLabel)
         .onChange(of: shape, initial: true) { _, new in onShapeChange(new) }
     }
 
     private var palette: TrayPalette { settings.appearance.palette }
+
+    private var motion: TrayMotion { TrayMotion(reduceMotion: reduceMotion) }
 
     private var isOpen: Bool { presenter.state.isOpen }
 
@@ -105,7 +117,7 @@ struct TrayContentView: View {
     /// Opening and closing get different springs: leaving should feel calmer
     /// than arriving (§45).
     private var containerAnimation: Animation {
-        isOpen ? TrayAnimation.expand : TrayAnimation.collapse
+        isOpen ? motion.expand : motion.collapse
     }
 
     // MARK: - Closed
@@ -159,7 +171,7 @@ struct TrayContentView: View {
                 .font(.system(size: 11, weight: .medium))
                 .foregroundStyle(palette.ink(presenter.state.isDropTargetActive ? 0.8 : 0.42))
         }
-        .animation(TrayAnimation.hover, value: presenter.state)
+        .animation(motion.hover, value: presenter.state)
     }
 
     /// A horizontal shelf, never a grid (§19).
@@ -207,12 +219,12 @@ struct TrayContentView: View {
                     onClick: { onClick(item, $0) },
                     onCopy: { onCopy(copyTargets(for: item)) }
                 )
-                .transition(itemTransition)
+                .transition(motion.itemTransition)
             }
         }
         .padding(.horizontal, TrayMetrics.horizontalPadding)
         .padding(.vertical, TrayMetrics.verticalPadding)
-        .animation(TrayAnimation.itemShift, value: store.items.map(\.id))
+        .animation(motion.itemShift, value: store.items.map(\.id))
     }
 
     private var scrollEdgeMask: some View {
@@ -225,18 +237,6 @@ struct TrayContentView: View {
             ],
             startPoint: .leading,
             endPoint: .trailing
-        )
-    }
-
-    /// Items arrive with a little more energy than the container and leave
-    /// quickly and quietly (§45, §46). No fireworks.
-    private var itemTransition: AnyTransition {
-        if TrayAnimation.prefersReducedMotion {
-            return .opacity
-        }
-        return .asymmetric(
-            insertion: .scale(scale: 0.72).combined(with: .opacity),
-            removal: .scale(scale: TrayScale.itemDeparting).combined(with: .opacity)
         )
     }
 

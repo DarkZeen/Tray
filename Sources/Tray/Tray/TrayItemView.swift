@@ -21,6 +21,7 @@ struct TrayItemView: View {
     let onCopy: () -> Void
 
     @Environment(\.trayPalette) private var palette
+    @Environment(\.trayMotion) private var motion
 
     @State private var image: NSImage?
     @State private var isHovering = false
@@ -50,9 +51,9 @@ struct TrayItemView: View {
         .frame(width: metrics.itemWidth)
         .scaleEffect(scale)
         .opacity(isBeingDragged ? 0.32 : 1)
-        .animation(TrayAnimation.hover, value: isHovering)
-        .animation(TrayAnimation.hover, value: isSelected)
-        .animation(TrayAnimation.itemShift, value: isBeingDragged)
+        .animation(motion.hover, value: isHovering)
+        .animation(motion.hover, value: isSelected)
+        .animation(motion.itemShift, value: isBeingDragged)
         .overlay { interactionLayer }
         .help(item.url.path)
         .accessibilityElement(children: .ignore)

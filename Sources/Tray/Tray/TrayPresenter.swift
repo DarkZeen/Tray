@@ -23,6 +23,28 @@ final class TrayPresenter {
     /// drop area yet — the tray leans toward it without committing (§13).
     private(set) var isDragApproaching = false
 
+    /// True for the moment after something lands, while the shelf takes the
+    /// impact (§46).
+    private(set) var isAbsorbingDrop = false
+
+    private var dropImpactTask: Task<Void, Never>?
+
+    /// The container's scale (§13, §46).
+    ///
+    /// Lives here rather than on `TrayPresentationState` because two of its
+    /// three inputs — an approaching drag and a landing drop — are facts about
+    /// what is happening *around* the tray, not about which state it is in.
+    /// That is why §13's anticipation step was specified with a value and then
+    /// never wired: there was nowhere in the state enum for it to come from.
+    var containerScale: CGFloat {
+        if isAbsorbingDrop { return TrayScale.dropImpact }
+        if state.isDropTargetActive { return TrayScale.dropTargetActive }
+        // A drag is in the neighbourhood but not yet over the target: the shelf
+        // leans toward it without committing.
+        if isDragApproaching { return TrayScale.dragApproaching }
+        return TrayScale.resting
+    }
+
     private let logger = Diagnostics.logger("presenter")
 
     /// True while the user is working *in* the tray — something is selected,
@@ -142,6 +164,7 @@ final class TrayPresenter {
     func dropCompleted() {
         isDragApproaching = false
         transition(to: .expanded)
+        absorbDrop()
         guard !pointerIsInside else { return }
 
         if expandsAfterDrop() {
@@ -151,6 +174,20 @@ final class TrayPresenter {
             scheduleCollapse(after: max(collapseDelay(), TrayAnimation.collapseDelay) * 2)
         } else {
             scheduleCollapse(after: collapseDelay())
+        }
+    }
+
+    /// The shelf gives a little as something lands on it, then springs back.
+    ///
+    /// Two values and an underdamped spring, rather than the three keyframes
+    /// §46 describes: the overshoot on the way back *is* the 1.02.
+    private func absorbDrop() {
+        dropImpactTask?.cancel()
+        isAbsorbingDrop = true
+        dropImpactTask = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(TrayAnimation.dropImpactDuration))
+            guard !Task.isCancelled else { return }
+            self?.isAbsorbingDrop = false
         }
     }
 
@@ -211,6 +248,8 @@ final class TrayPresenter {
         openTask = nil
         isDragApproaching = false
         isInteracting = false
+        dropImpactTask?.cancel()
+        isAbsorbingDrop = false
         transition(to: .collapsed)
     }
 
