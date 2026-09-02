@@ -135,7 +135,9 @@ struct TrayPane: View {
                 SettingsRow(
                     icon: "clock.arrow.circlepath",
                     title: "Close after",
-                    description: "How long the shelf waits once the pointer leaves."
+                    description: settings.autoCollapseDelay < SettingsStore.immediateThreshold
+                        ? "The shelf closes as the pointer leaves."
+                        : "How long the shelf waits once the pointer leaves."
                 ) {
                     HStack(spacing: 8) {
                         Slider(
@@ -147,11 +149,15 @@ struct TrayPane: View {
                         )
                         .frame(width: 110)
 
-                        Text(String(format: "%.2fs", settings.autoCollapseDelay))
-                            .font(.system(size: 11))
-                            .foregroundStyle(.secondary)
-                            .monospacedDigit()
-                            .frame(width: 40, alignment: .trailing)
+                        Text(
+                            settings.autoCollapseDelay < SettingsStore.immediateThreshold
+                                ? "Now"
+                                : String(format: "%.2fs", settings.autoCollapseDelay)
+                        )
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                        .monospacedDigit()
+                        .frame(width: 40, alignment: .trailing)
                     }
                 }
 

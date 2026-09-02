@@ -10,12 +10,15 @@ struct TrayItemView: View {
     let thumbnails: ThumbnailProvider
     let showsFilename: Bool
     let isBeingDragged: Bool
+    let isSelected: Bool
 
     let onDragBegan: () -> Void
     let onDragEnded: (Bool) -> Void
     let onRemove: () -> Void
     let onReveal: () -> Void
     let onQuickLook: () -> Void
+    let onClick: (NSEvent.ModifierFlags) -> Void
+    let onCopy: () -> Void
 
     @State private var image: NSImage?
     @State private var isHovering = false
@@ -46,12 +49,13 @@ struct TrayItemView: View {
         .scaleEffect(scale)
         .opacity(isBeingDragged ? 0.32 : 1)
         .animation(TrayAnimation.hover, value: isHovering)
+        .animation(TrayAnimation.hover, value: isSelected)
         .animation(TrayAnimation.itemShift, value: isBeingDragged)
         .overlay { interactionLayer }
         .help(item.url.path)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(item.accessibilityLabel)
-        .accessibilityAddTraits(.isButton)
+        .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
         .task(id: item.identity) {
             image = await thumbnails.previewImage(
                 for: item,
@@ -70,9 +74,19 @@ struct TrayItemView: View {
             .frame(width: TrayMetrics.thumbnailSize, height: TrayMetrics.thumbnailSize)
             .opacity(item.isAvailable ? 1 : 0.4)
             .background {
+                // Hover is a whisper; selection is a statement. Both live on
+                // the same shape so one becomes the other rather than a second
+                // thing appearing next to it.
                 RoundedRectangle(cornerRadius: 9, style: .continuous)
-                    .fill(.white.opacity(isHovering ? 0.09 : 0))
-                    .padding(-3)
+                    .fill(selectionFill)
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 9, style: .continuous)
+                            .strokeBorder(
+                                Color.accentColor.opacity(isSelected ? 0.9 : 0),
+                                lineWidth: 1.5
+                            )
+                    }
+                    .padding(-4)
             }
             .overlay(alignment: .bottomTrailing) {
                 if !item.isAvailable { unavailableBadge }
@@ -90,6 +104,13 @@ struct TrayItemView: View {
             .offset(x: 2, y: 2)
     }
 
+    private var selectionFill: Color {
+        // The accent colour, because that is what "selected" means everywhere
+        // else on the system. White would read as pressed.
+        if isSelected { return .accentColor.opacity(0.30) }
+        return .white.opacity(isHovering ? 0.09 : 0)
+    }
+
     private var scale: CGFloat {
         if isBeingDragged { return TrayScale.itemLifted }
         return isHovering ? TrayScale.itemHover : TrayScale.resting
@@ -102,15 +123,22 @@ struct TrayItemView: View {
             onDragBegan: onDragBegan,
             onDragEnded: onDragEnded,
             onOpenQuickLook: onQuickLook,
+            onClick: onClick,
             menuBuilder: buildMenu,
             dragImage: { displayImage }
         )
     }
 
-    /// Three items, and no more (§23). The tray is not Finder.
+    /// Short, and it stays short (§23). The tray is not Finder.
+    ///
+    /// Copy is the one addition beyond the three §23 lists, added because the
+    /// shelf now has ⌘C and a command with no visible home is a command nobody
+    /// finds. The rest of §23's list — Rename, Compress, Share, Open With,
+    /// Move, Delete — stays out.
     private func buildMenu() -> NSMenu {
         let menu = NSMenu()
         menu.addAction(title: "Remove from Tray", handler: onRemove)
+        menu.addAction(title: "Copy", isEnabled: item.isAvailable, handler: onCopy)
         menu.addAction(title: "Reveal in Finder", isEnabled: item.isAvailable, handler: onReveal)
         menu.addAction(title: "Quick Look", isEnabled: item.isAvailable, handler: onQuickLook)
         return menu

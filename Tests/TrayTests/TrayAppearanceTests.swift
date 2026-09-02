@@ -63,8 +63,9 @@ struct TrayAppearanceTests {
         try render("06-expanded-four", geometry: notchless, items: 4, state: .expanded)
         try render("07-expanded-many", geometry: notchless, items: 12, state: .expanded)
         try render("08-expanded-notched", geometry: notched, items: 4, state: .expanded)
+        try render("09-selected", geometry: notchless, items: 4, state: .expanded, selecting: [1, 2])
 
-        #expect(try FileManager.default.contentsOfDirectory(atPath: output.path).count >= 8)
+        #expect(try FileManager.default.contentsOfDirectory(atPath: output.path).count >= 9)
     }
 
     /// The images the README shows.
@@ -112,10 +113,12 @@ struct TrayAppearanceTests {
         let view = TrayContentView(
             store: store,
             presenter: presenter,
+            selection: TraySelection(),
             thumbnails: ThumbnailProvider(),
             settings: SettingsStore(defaults: Self.emptyDefaults()),
             geometry: geometry,
-            onRemove: { _ in }, onReveal: { _ in }, onQuickLook: { _ in },
+            onRemove: { _ in }, onCopy: { _ in }, onClick: { _, _ in },
+            onReveal: { _ in }, onQuickLook: { _ in },
             onItemDragBegan: { _ in }, onItemDragEnded: { _, _ in },
             onShapeChange: { _ in }
         )
@@ -134,10 +137,16 @@ struct TrayAppearanceTests {
         _ name: String,
         geometry: ScreenGeometry,
         items: Int,
-        state: TrayPresentationState
+        state: TrayPresentationState,
+        selecting indices: [Int] = []
     ) throws {
         let store = TrayStore()
         store.add(Self.sampleURLs(count: items))
+
+        let selection = TraySelection()
+        for index in indices where store.items.indices.contains(index) {
+            selection.toggle(store.items[index].id)
+        }
 
         let presenter = TrayPresenter()
         switch state {
@@ -150,10 +159,12 @@ struct TrayAppearanceTests {
         let view = TrayContentView(
             store: store,
             presenter: presenter,
+            selection: selection,
             thumbnails: ThumbnailProvider(),
             settings: SettingsStore(defaults: Self.emptyDefaults()),
             geometry: geometry,
-            onRemove: { _ in }, onReveal: { _ in }, onQuickLook: { _ in },
+            onRemove: { _ in }, onCopy: { _ in }, onClick: { _, _ in },
+            onReveal: { _ in }, onQuickLook: { _ in },
             onItemDragBegan: { _ in }, onItemDragEnded: { _, _ in },
             onShapeChange: { _ in }
         )

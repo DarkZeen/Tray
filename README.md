@@ -42,9 +42,10 @@ That is the entire product. There is no media player, no clipboard history, no w
 - **Drag files up, and the shelf opens to catch them.** Aim roughly at the top centre of the screen — the drop target is much wider than the shelf looks, so you do not have to be precise. Drop several at once if you like.
 - **Nothing moves on disk.** The shelf holds a reference to the file, not a copy. Your photo stays on the Desktop the whole time it is sitting in the tray.
 - **Drag them back out into anything.** A Finder window, a Save dialog, an upload field, another app. It is a real macOS drag, so every destination that takes a file takes this one.
+- **Or use the keyboard.** Click an item and press Delete to take it off the shelf, Space to Quick Look it, ⌘C to copy it, ⌘V to paste files in from anywhere. ⌘-click picks out several, ⌘A takes the lot, arrow keys walk along, Escape closes.
 - **It knows about the notch.** On a MacBook with a camera housing the closed shelf *is* the housing — same width, same height, hanging off the same edge. On any other display it is a small capsule in the same place. Both are measured from the display, never hardcoded, so external monitors and scaling changes are just other numbers.
 - **Every display gets one.** Drag toward the top of your second monitor and that monitor's shelf answers. Connect or disconnect a screen and the shelves follow.
-- **It stays out of the way.** Empty and idle, the tray is a faint line you can ignore. Holding something, it is a small pill with a dot per file. It never takes focus, so dragging at it does not pull you out of whatever you were doing.
+- **It stays out of the way.** Empty and idle, the tray is a faint line you can ignore. Holding something, it is a small pill with a dot per file. It opens as the pointer arrives and closes as the pointer leaves. Hovering and dropping never take focus, so throwing a file at it does not pull you out of whatever you were doing — only clicking into it does, and only so the keyboard has something to talk to.
 - **Secondary click for the rest.** Remove from Tray, Reveal in Finder, Quick Look. Three items, because it is a shelf and not a file manager.
 
 <p align="center">
@@ -54,7 +55,9 @@ That is the entire product. There is no media player, no clipboard history, no w
 
 ## Settings
 
-Four pages, and most of them you will open once. General has Launch at Login and the menu bar icon; Tray has what opens the shelf, how long it waits before closing, and whether file names show.
+Four pages, and most of them you will open once. General has Launch at Login and the menu bar icon; Tray has what opens the shelf, how long it waits before closing, and whether file names show. Opening Tray while it is already running opens this window — an app with no Dock icon has to have a front door somewhere.
+
+By default the shelf closes the moment the pointer leaves. If you would rather it lingered, the *Close after* slider goes up to three seconds.
 
 The Privacy page is the one worth a look. It is the same page other menu bar apps use to explain which permissions they need — except that Tray's version is a list of the ones it does not.
 

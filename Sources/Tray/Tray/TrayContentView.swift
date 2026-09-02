@@ -11,11 +11,14 @@ import SwiftUI
 struct TrayContentView: View {
     let store: TrayStore
     let presenter: TrayPresenter
+    let selection: TraySelection
     let thumbnails: ThumbnailProvider
     let settings: SettingsStore
     let geometry: ScreenGeometry
 
     let onRemove: (TrayItem) -> Void
+    let onCopy: ([TrayItem]) -> Void
+    let onClick: (TrayItem, NSEvent.ModifierFlags) -> Void
     let onReveal: (TrayItem) -> Void
     let onQuickLook: (TrayItem) -> Void
     let onItemDragBegan: (TrayItem) -> Void
@@ -171,11 +174,14 @@ struct TrayContentView: View {
                     thumbnails: thumbnails,
                     showsFilename: settings.showsFileNames,
                     isBeingDragged: presenter.state.draggedItemID == item.id,
+                    isSelected: selection.contains(item.id),
                     onDragBegan: { onItemDragBegan(item) },
                     onDragEnded: { onItemDragEnded(item, $0) },
                     onRemove: { onRemove(item) },
                     onReveal: { onReveal(item) },
-                    onQuickLook: { onQuickLook(item) }
+                    onQuickLook: { onQuickLook(item) },
+                    onClick: { onClick(item, $0) },
+                    onCopy: { onCopy(copyTargets(for: item)) }
                 )
                 .transition(itemTransition)
             }
@@ -208,6 +214,14 @@ struct TrayContentView: View {
             insertion: .scale(scale: 0.72).combined(with: .opacity),
             removal: .scale(scale: TrayScale.itemDeparting).combined(with: .opacity)
         )
+    }
+
+    /// Copying from an item's own menu copies the whole selection when that
+    /// item is part of it, and just that item when it is not — the same rule
+    /// Finder uses, so a right-click never silently narrows what you picked.
+    private func copyTargets(for item: TrayItem) -> [TrayItem] {
+        guard selection.contains(item.id) else { return [item] }
+        return selection.items(from: store.items)
     }
 
     private var accessibilityLabel: String {

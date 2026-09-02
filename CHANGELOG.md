@@ -8,13 +8,30 @@ All notable changes to Tray are recorded here. The format follows
 
 ### Added
 
+- Keyboard control of the shelf. Click an item to select it, then Delete to
+  remove it, Space to Quick Look it, ⌘C to copy it and ⌘V to paste files in.
+  ⌘-click selects several, ⌘A selects everything, the arrow keys walk along the
+  shelf, and Escape closes it. Copying writes file URLs, so pasting into Finder
+  or a Save dialog lands the file itself and the original never moves.
+- Copy in the item's secondary-click menu, so ⌘C is discoverable.
+- Opening Tray while it is already running opens Settings. An app with no Dock
+  icon and no windows would otherwise appear to do nothing when opened.
 - A settings window with sidebar navigation and four pages: General, Tray,
   Privacy and About. The Privacy page states, permission by permission, what
   Tray does not ask for — no Accessibility, no Screen Recording, no Full Disk
   Access, no camera or microphone, and no network at all.
 
+### Changed
+
+- The shelf now closes as the pointer leaves rather than after a grace period.
+  *Close after* in Settings still goes up to three seconds for anyone who wants
+  the old behaviour, and a tray you have clicked into stays open regardless —
+  otherwise reaching for the keyboard would close it.
+
 ### Fixed
 
+- The *Close after* setting had no effect at all. The presenter read a constant
+  instead of the stored value, so the slider moved and nothing happened.
 - Tray no longer records a Launch at Login preference the user never expressed.
   `SMAppService` reports the app as enabled on a fresh install, and startup
   reconciliation treated an absent preference as "off" — so it read that as the

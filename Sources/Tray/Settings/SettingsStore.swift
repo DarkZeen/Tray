@@ -66,6 +66,11 @@ final class SettingsStore {
     }
 
     /// Seconds the tray waits after the pointer leaves before closing (§17).
+    ///
+    /// Zero means it closes as the pointer leaves. That is the default: the
+    /// shelf is somewhere you visit, and a shelf that lingers after you have
+    /// looked away is in the way. The delay is still available for anyone who
+    /// wants the grace period §17 describes.
     var autoCollapseDelay: Double {
         didSet { defaults.set(autoCollapseDelay, forKey: Key.autoCollapseDelay) }
     }
@@ -74,7 +79,10 @@ final class SettingsStore {
         didSet { defaults.set(showsFileNames, forKey: Key.showsFileNames) }
     }
 
-    static let collapseDelayRange: ClosedRange<Double> = 0.2...3.0
+    static let collapseDelayRange: ClosedRange<Double> = 0...3.0
+
+    /// Below this, the delay reads as "immediately" rather than as a number.
+    static let immediateThreshold: Double = 0.05
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
@@ -83,7 +91,7 @@ final class SettingsStore {
             Key.showsMenuBarIcon: true,
             Key.showsFileNames: true,
             Key.activation: Activation.both.rawValue,
-            Key.autoCollapseDelay: TrayAnimation.collapseDelay,
+            Key.autoCollapseDelay: 0.0,
         ])
 
         // `object(forKey:)` rather than `bool(forKey:)`, so an absent key

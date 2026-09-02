@@ -38,6 +38,18 @@ final class TrayDropView: NSView {
         }
     }
 
+    /// Keyboard commands. The tray only has a keyboard while it is key, which
+    /// only happens when the user clicks into it — hovering and dropping never
+    /// take focus (§28).
+    var onDelete: () -> Void = {}
+    var onCopy: () -> Void = {}
+    var onPaste: () -> Void = {}
+    var onSelectAll: () -> Void = {}
+    var onQuickLook: () -> Void = {}
+    var onEscape: () -> Void = {}
+    var onStepSelection: (Int) -> Void = { _ in }
+    var onClearSelection: () -> Void = {}
+
     var onPointerEnter: () -> Void = {}
     var onPointerExit: () -> Void = {}
     var onDragEnter: () -> Void = {}
@@ -100,6 +112,64 @@ final class TrayDropView: NSView {
     /// which is exactly the condition that should widen the target.
     private var pointerButtonIsDown: Bool {
         NSEvent.pressedMouseButtons & 0x1 != 0
+    }
+
+    // MARK: - Keyboard (§35, §36)
+
+    override var acceptsFirstResponder: Bool { true }
+
+    /// A click anywhere on the tray that is not on an item clears the
+    /// selection, the way clicking the background of any list does.
+    override func mouseDown(with event: NSEvent) {
+        window?.makeFirstResponder(self)
+        onClearSelection()
+    }
+
+    override func keyDown(with event: NSEvent) {
+        guard let characters = event.charactersIgnoringModifiers, !characters.isEmpty else {
+            super.keyDown(with: event)
+            return
+        }
+
+        switch characters.unicodeScalars.first! {
+        case Unicode.Scalar(NSDeleteCharacter)!,        // ⌫
+             Unicode.Scalar(NSDeleteFunctionKey)!:      // ⌦
+            onDelete()
+
+        case Unicode.Scalar(NSLeftArrowFunctionKey)!:
+            onStepSelection(-1)
+
+        case Unicode.Scalar(NSRightArrowFunctionKey)!:
+            onStepSelection(1)
+
+        case " ":
+            // Select an item, press Space — the same gesture as Finder (§24).
+            onQuickLook()
+
+        case Unicode.Scalar(27):                        // Escape
+            onEscape()
+
+        default:
+            super.keyDown(with: event)
+        }
+    }
+
+    /// ⌘C, ⌘V and ⌘A.
+    ///
+    /// Handled as key *equivalents* rather than in `keyDown`, because there is
+    /// no menu bar menu carrying these commands — a borderless panel has no
+    /// Edit menu to route them through.
+    override func performKeyEquivalent(with event: NSEvent) -> Bool {
+        guard event.modifierFlags.intersection(.deviceIndependentFlagsMask) == .command,
+              let characters = event.charactersIgnoringModifiers
+        else { return super.performKeyEquivalent(with: event) }
+
+        switch characters.lowercased() {
+        case "c": onCopy(); return true
+        case "v": onPaste(); return true
+        case "a": onSelectAll(); return true
+        default: return super.performKeyEquivalent(with: event)
+        }
     }
 
     // MARK: - Hit testing

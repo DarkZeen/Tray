@@ -25,6 +25,18 @@ final class TrayPresenter {
 
     private let logger = Diagnostics.logger("presenter")
 
+    /// True while the user is working *in* the tray — something is selected,
+    /// the panel has the keyboard. An interacting tray does not close when the
+    /// pointer wanders off, because the pointer is no longer the thing driving
+    /// it. Without this, selecting an item and reaching for Delete would close
+    /// the shelf on the way to the keyboard.
+    private(set) var isInteracting = false
+
+    /// How long to wait before closing once the pointer leaves. Supplied by the
+    /// caller so the setting is the single source of truth rather than a
+    /// constant that quietly disagrees with it.
+    var collapseDelay: () -> TimeInterval = { TrayAnimation.collapseDelay }
+
     private var pointerIsInside = false
     private var openTask: Task<Void, Never>?
     private var collapseTask: Task<Void, Never>?
@@ -60,7 +72,21 @@ final class TrayPresenter {
         openTask = nil
 
         guard state.isOpen else { return }
-        scheduleCollapse(after: TrayAnimation.collapseDelay)
+        scheduleCollapse(after: collapseDelay())
+    }
+
+    // MARK: - Working in the tray
+
+    func beganInteracting() {
+        isInteracting = true
+        cancelScheduledCollapse()
+    }
+
+    func endedInteracting() {
+        guard isInteracting else { return }
+        isInteracting = false
+        guard state.isOpen, !pointerIsInside else { return }
+        scheduleCollapse(after: collapseDelay())
     }
 
     // MARK: - External drags (§13, §14)
@@ -96,7 +122,7 @@ final class TrayPresenter {
         // leash than a pointer, but still a leash — slamming shut mid-gesture
         // would be worse than staying open a beat too long.
         if !pointerIsInside {
-            scheduleCollapse(after: TrayAnimation.dragExitGrace + TrayAnimation.collapseDelay)
+            scheduleCollapse(after: TrayAnimation.dragExitGrace + collapseDelay())
         }
     }
 
@@ -106,7 +132,10 @@ final class TrayPresenter {
         isDragApproaching = false
         transition(to: .expanded)
         if !pointerIsInside {
-            scheduleCollapse(after: TrayAnimation.collapseDelay * 2)
+            // Longer than an ordinary close: something just landed and the user
+            // deserves a moment to see what it was, however impatient the
+            // auto-collapse setting is.
+            scheduleCollapse(after: max(collapseDelay(), TrayAnimation.collapseDelay) * 2)
         }
     }
 
@@ -121,7 +150,7 @@ final class TrayPresenter {
         guard state.draggedItemID != nil else { return }
         transition(to: .expanded)
         if !pointerIsInside {
-            scheduleCollapse(after: TrayAnimation.collapseDelay)
+            scheduleCollapse(after: collapseDelay())
         }
     }
 
@@ -140,7 +169,10 @@ final class TrayPresenter {
         // the user asked for it and needs time to reach it — but it does close
         // on its own.
         if !pointerIsInside {
-            scheduleCollapse(after: TrayAnimation.collapseDelay * 4)
+            // Opened deliberately from the menu bar, with the pointer nowhere
+            // near — the user needs time to travel there, whatever the
+            // auto-collapse setting says.
+            scheduleCollapse(after: max(collapseDelay(), TrayAnimation.collapseDelay) * 4)
         }
     }
 
@@ -149,6 +181,7 @@ final class TrayPresenter {
         openTask?.cancel()
         openTask = nil
         isDragApproaching = false
+        isInteracting = false
         transition(to: .collapsed)
     }
 
@@ -160,7 +193,20 @@ final class TrayPresenter {
 
     private func scheduleCollapse(after delay: TimeInterval) {
         guard !Diagnostics.holdsTrayOpen else { return }
+        guard !isInteracting else { return }
+
         collapseTask?.cancel()
+
+        // Zero means close on the way out, not on the next runloop pass. Going
+        // through a task for it would put a visible frame of hesitation on the
+        // one setting whose whole point is that there is none.
+        guard delay > 0 else {
+            isCollapseScheduled = false
+            collapseTask = nil
+            transition(to: .collapsed)
+            return
+        }
+
         isCollapseScheduled = true
         logger.debug("collapse scheduled in \(delay, privacy: .public)s")
         collapseTask = Task { [weak self] in

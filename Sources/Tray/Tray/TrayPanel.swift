@@ -31,10 +31,11 @@ final class TrayPanel: NSPanel {
         isMovableByWindowBackground = false
         isRestorable = false
 
-        // Key only when something actually needs the keyboard — a click on an
-        // item, or Quick Look. Hovering must never take key away from the
-        // user's frontmost app.
-        becomesKeyOnlyIfNeeded = true
+        // A click on the tray gives it the keyboard, so that Delete, ⌘C and ⌘V
+        // have something to act on. Hovering, dropping and dragging never do —
+        // this is a non-activating panel, so even taking key leaves the user's
+        // app frontmost and Tray out of ⌘-Tab (§28).
+        becomesKeyOnlyIfNeeded = false
 
         // The lowest level that puts the tray at the top edge alongside the
         // menu bar, per §29's instruction to start conservatively. Anything

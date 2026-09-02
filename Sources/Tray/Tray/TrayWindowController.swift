@@ -13,6 +13,7 @@ import SwiftUI
 final class TrayWindowController {
     let geometry: ScreenGeometry
     let presenter = TrayPresenter()
+    let selection = TraySelection()
 
     private let store: TrayStore
     private let thumbnails: ThumbnailProvider
@@ -22,6 +23,8 @@ final class TrayWindowController {
     private let panel: TrayPanel
     private let dropView: TrayDropView
     private var hostingView: NSHostingView<AnyView>!
+
+    private var focusObserver: (any NSObjectProtocol)?
 
     private let logger = Diagnostics.logger("tray-window")
 
@@ -45,8 +48,11 @@ final class TrayWindowController {
         self.panel = TrayPanel(contentRect: frame)
         self.dropView = TrayDropView(frame: NSRect(origin: .zero, size: frame.size))
 
+        presenter.collapseDelay = { [settings] in settings.autoCollapseDelay }
+
         configureContent()
         configureMouseHandling()
+        configureFocusHandling()
 
         // Notch geometry is nearly impossible to reason about and trivial to
         // check, so the numbers this display actually produced go in the log
@@ -101,16 +107,25 @@ final class TrayWindowController {
         panel.orderOut(nil)
     }
 
+    isolated deinit {
+        if let focusObserver {
+            NotificationCenter.default.removeObserver(focusObserver)
+        }
+    }
+
     // MARK: - Content
 
     private func configureContent() {
         let view = TrayContentView(
             store: store,
             presenter: presenter,
+            selection: selection,
             thumbnails: thumbnails,
             settings: settings,
             geometry: geometry,
-            onRemove: { [weak self] item in self?.remove(item) },
+            onRemove: { [weak self] item in self?.remove([item]) },
+            onCopy: { [weak self] items in self?.copy(items) },
+            onClick: { [weak self] item, modifiers in self?.click(item, modifiers) },
             onReveal: { item in
                 NSWorkspace.shared.activateFileViewerSelecting([item.url])
             },
@@ -192,8 +207,114 @@ final class TrayWindowController {
         }
 
         presenter.onStateChange = { [weak self] state in
-            self?.dropView.isOpen = state.isOpen
+            guard let self else { return }
+            self.dropView.isOpen = state.isOpen
+            // A closed tray has nothing to have selected, and leaving a stale
+            // selection behind means the next Delete acts on something the user
+            // picked minutes ago.
+            if !state.isOpen { self.clearSelection() }
         }
+
+        configureKeyboard()
+    }
+
+    // MARK: - Focus
+
+    /// Clicking away from the tray ends whatever was going on in it.
+    ///
+    /// Without this, a tray the user clicked into stays open forever: the
+    /// interaction gate is holding it, and the pointer leaving no longer
+    /// closes it.
+    private func configureFocusHandling() {
+        focusObserver = NotificationCenter.default.addObserver(
+            forName: NSWindow.didResignKeyNotification,
+            object: panel,
+            queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated {
+                guard let self else { return }
+                self.selection.clear()
+                self.presenter.endedInteracting()
+            }
+        }
+    }
+
+    // MARK: - Keyboard
+
+    private func configureKeyboard() {
+        dropView.onDelete = { [weak self] in
+            guard let self else { return }
+            self.remove(self.selection.items(from: self.store.items))
+        }
+
+        dropView.onCopy = { [weak self] in
+            guard let self else { return }
+            self.copy(self.selection.items(from: self.store.items))
+        }
+
+        dropView.onPaste = { [weak self] in self?.paste() }
+
+        dropView.onSelectAll = { [weak self] in
+            guard let self else { return }
+            self.selection.selectAll(self.store.items.map(\.id))
+        }
+
+        dropView.onQuickLook = { [weak self] in
+            guard let self,
+                  let item = self.selection.items(from: self.store.items).first
+            else { return }
+            self.onQuickLookRequest?(item)
+        }
+
+        dropView.onEscape = { [weak self] in
+            self?.clearSelection()
+            self?.presenter.collapseNow()
+        }
+
+        dropView.onStepSelection = { [weak self] offset in
+            guard let self else { return }
+            self.selection.step(by: offset, within: self.store.items.map(\.id))
+        }
+
+        dropView.onClearSelection = { [weak self] in self?.clearSelection() }
+    }
+
+    private func click(_ item: TrayItem, _ modifiers: NSEvent.ModifierFlags) {
+        if modifiers.contains(.command) {
+            selection.toggle(item.id)
+        } else {
+            selection.select(item.id)
+        }
+        presenter.beganInteracting()
+    }
+
+    private func clearSelection() {
+        selection.clear()
+        presenter.endedInteracting()
+    }
+
+    /// ⌘C. Writes file URLs, which is what Finder writes — so pasting lands
+    /// the file itself, and the original never moves (§3).
+    private func copy(_ items: [TrayItem]) {
+        guard !items.isEmpty else { return }
+        let wrote = TrayPasteboard.copy(items)
+        logger.debug("Copied \(items.count, privacy: .public) item(s): \(wrote, privacy: .public)")
+    }
+
+    /// ⌘V. The mirror of a drop, and it obeys the same rule: what lands on the
+    /// shelf is a reference, not a copy of the bytes.
+    private func paste() {
+        let urls = TrayPasteboard.pasteableURLs()
+        guard !urls.isEmpty else { return }
+
+        store.refreshAvailability()
+        if case .added(let ids) = store.add(urls) {
+            // Select what just arrived, so a paste is visible rather than
+            // merely successful.
+            selection.selectAll(ids)
+            presenter.beganInteracting()
+        }
+        presenter.dropCompleted()
     }
 
     /// A drop stores references. It never copies, moves or modifies the
@@ -216,14 +337,18 @@ final class TrayWindowController {
         // (§22). Cancelled: it springs back, which is the absence of any
         // change here plus the scale animation unwinding.
         if didLand {
-            store.remove(id: item.id)
-            thumbnails.forget(item)
+            remove([item])
         }
     }
 
-    private func remove(_ item: TrayItem) {
-        store.remove(id: item.id)
-        thumbnails.forget(item)
+    private func remove(_ items: [TrayItem]) {
+        guard !items.isEmpty else { return }
+        for item in items {
+            store.remove(id: item.id)
+            thumbnails.forget(item)
+        }
+        selection.prune(to: store.items.map(\.id))
+        if selection.isEmpty { presenter.endedInteracting() }
     }
 
     // MARK: - Commands

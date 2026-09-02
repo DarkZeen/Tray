@@ -22,6 +22,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         false
     }
 
+    /// Opening Tray while it is already running opens Settings.
+    ///
+    /// An agent app has no Dock tile and no window to bring forward, so
+    /// double-clicking it in Applications would otherwise appear to do nothing
+    /// at all — the app is running, so macOS just sends this and waits. Settings
+    /// is the only thing it could sensibly mean.
+    func applicationShouldHandleReopen(
+        _ sender: NSApplication,
+        hasVisibleWindows: Bool
+    ) -> Bool {
+        MainActor.assumeIsolated { state.showSettings() }
+        return true
+    }
+
     // MARK: - Quick Look (§24)
 
     // `QLPreviewPanel` finds its controller by walking the responder chain,

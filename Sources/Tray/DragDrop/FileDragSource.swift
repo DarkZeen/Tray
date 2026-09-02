@@ -20,6 +20,9 @@ final class ItemInteractionView: NSView {
     var onDragBegan: () -> Void = {}
     var onDragEnded: (Bool) -> Void = { _ in }
     var onOpenQuickLook: () -> Void = {}
+    /// A plain click. The modifier flags come along so ⌘-click can extend the
+    /// selection rather than replace it.
+    var onClick: (NSEvent.ModifierFlags) -> Void = { _ in }
     var menuBuilder: () -> NSMenu? = { nil }
     var dragImage: () -> NSImage? = { nil }
 
@@ -65,6 +68,24 @@ final class ItemInteractionView: NSView {
 
     override func mouseDown(with event: NSEvent) {
         mouseDownEvent = event
+
+        // Hand the keyboard to the tray, so Delete and ⌘C have a subject.
+        // Nothing else in the app does this: hovering and dropping leave focus
+        // exactly where it was (§28).
+        if let dropView = enclosingDropView {
+            window?.makeFirstResponder(dropView)
+        }
+    }
+
+    /// The ancestor that owns the tray's keyboard handling. This view lives
+    /// inside a hosting view inside it, so the chain has to be walked.
+    private var enclosingDropView: TrayDropView? {
+        var candidate: NSView? = superview
+        while let view = candidate {
+            if let dropView = view as? TrayDropView { return dropView }
+            candidate = view.superview
+        }
+        return nil
     }
 
     override func mouseDragged(with event: NSEvent) {
@@ -79,8 +100,17 @@ final class ItemInteractionView: NSView {
     }
 
     override func mouseUp(with event: NSEvent) {
+        // A drag clears `mouseDownEvent` when it starts, so a nil here means
+        // the press already turned into a drag and this is not a click.
+        let isClick = mouseDownEvent != nil
         mouseDownEvent = nil
-        if event.clickCount == 2 { onOpenQuickLook() }
+        guard isClick else { return }
+
+        if event.clickCount == 2 {
+            onOpenQuickLook()
+        } else {
+            onClick(event.modifierFlags.intersection(.deviceIndependentFlagsMask))
+        }
     }
 
     private func beginDrag(with event: NSEvent) {
@@ -153,6 +183,7 @@ struct ItemInteractionLayer: NSViewRepresentable {
     let onDragBegan: () -> Void
     let onDragEnded: (Bool) -> Void
     let onOpenQuickLook: () -> Void
+    let onClick: (NSEvent.ModifierFlags) -> Void
     let menuBuilder: () -> NSMenu?
     let dragImage: () -> NSImage?
 
@@ -172,6 +203,7 @@ struct ItemInteractionLayer: NSViewRepresentable {
         view.onDragBegan = onDragBegan
         view.onDragEnded = onDragEnded
         view.onOpenQuickLook = onOpenQuickLook
+        view.onClick = onClick
         view.menuBuilder = menuBuilder
         view.dragImage = dragImage
     }
