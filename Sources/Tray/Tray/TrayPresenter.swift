@@ -37,6 +37,11 @@ final class TrayPresenter {
     /// constant that quietly disagrees with it.
     var collapseDelay: () -> TimeInterval = { TrayAnimation.collapseDelay }
 
+    /// Whether clicking into the tray pins it open until dismissed. When this
+    /// is off, the pointer leaving always closes the shelf, and the keyboard
+    /// only reaches it while the pointer is on it.
+    var holdsOpenWhenClicked: () -> Bool = { true }
+
     private var pointerIsInside = false
     private var openTask: Task<Void, Never>?
     private var collapseTask: Task<Void, Never>?
@@ -78,6 +83,9 @@ final class TrayPresenter {
     // MARK: - Working in the tray
 
     func beganInteracting() {
+        // Selecting still works either way — this only decides whether the
+        // selection is enough to hold the shelf open.
+        guard holdsOpenWhenClicked() else { return }
         isInteracting = true
         cancelScheduledCollapse()
     }

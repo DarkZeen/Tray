@@ -20,6 +20,8 @@ struct TrayItemView: View {
     let onClick: (NSEvent.ModifierFlags) -> Void
     let onCopy: () -> Void
 
+    @Environment(\.trayPalette) private var palette
+
     @State private var image: NSImage?
     @State private var isHovering = false
 
@@ -37,7 +39,7 @@ struct TrayItemView: View {
                     // Slight positive tracking: small type over a translucent
                     // surface needs the extra air to stay legible.
                     .tracking(0.1)
-                    .foregroundStyle(.white.opacity(item.isAvailable ? 0.62 : 0.34))
+                    .foregroundStyle(palette.ink(item.isAvailable ? 0.62 : 0.34))
                     .lineLimit(1)
                     // Middle truncation keeps the extension visible, which is
                     // usually the most identifying part of a filename.
@@ -106,9 +108,9 @@ struct TrayItemView: View {
 
     private var selectionFill: Color {
         // The accent colour, because that is what "selected" means everywhere
-        // else on the system. White would read as pressed.
+        // else on the system. Plain ink would read as pressed.
         if isSelected { return .accentColor.opacity(0.30) }
-        return .white.opacity(isHovering ? 0.09 : 0)
+        return palette.hoverFill(isHovering)
     }
 
     private var scale: CGFloat {

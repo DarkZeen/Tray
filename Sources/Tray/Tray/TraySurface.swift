@@ -44,43 +44,42 @@ struct TraySurface: InsettableShape {
 
 /// The material treatment applied to `TraySurface`.
 ///
-/// Dark in both appearances, deliberately (§49). The tray is a persistent
-/// object with its own identity, not a panel that inverts with the system —
-/// and a dark surface is what keeps file thumbnails reading as the content.
+/// Every colour comes from the palette, so switching appearance is one change
+/// rather than thirty (§49).
 struct TraySurfaceStyle: ViewModifier {
     var cornerRadius: CGFloat
     /// Slightly stronger blur while a drag is over the target (§14, step 5).
     var isEmphasised: Bool
 
+    @Environment(\.trayPalette) private var palette
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
 
     private var shape: TraySurface { TraySurface(cornerRadius: cornerRadius) }
 
     func body(content: Content) -> some View {
-        content
+        let highlight = palette.edgeHighlight(isEmphasised: isEmphasised)
+        let shadow = palette.shadow
+
+        return content
             .background {
                 shape
-                    .fill(baseFill)
+                    .fill(palette.surfaceFill(reduceTransparency: reduceTransparency))
                     .background {
-                        // Skipped entirely under reduced transparency, where a
-                        // solid surface is both the accessible answer and the
-                        // cheaper one.
-                        if !reduceTransparency {
+                        // Skipped under reduced transparency, where a solid
+                        // surface is both the accessible answer and the cheaper
+                        // one — and skipped for pitch black, which is opaque by
+                        // definition.
+                        if palette.usesMaterial && !reduceTransparency {
                             shape.fill(.ultraThinMaterial)
                         }
                     }
             }
             .overlay {
-                // An edge highlight, not a stroke (§48). Brightest along the
-                // top where light would catch a real object, gone by the
-                // bottom. It exists so the tray still has an edge against a
-                // white wallpaper.
+                // An edge highlight, not a stroke (§48). It exists so the tray
+                // still has an edge against a wallpaper the same colour as it.
                 shape.strokeBorder(
                     LinearGradient(
-                        colors: [
-                            .white.opacity(isEmphasised ? 0.16 : 0.10),
-                            .white.opacity(0.02),
-                        ],
+                        colors: [highlight.top, highlight.bottom],
                         startPoint: .top,
                         endPoint: .bottom
                     ),
@@ -88,17 +87,8 @@ struct TraySurfaceStyle: ViewModifier {
                 )
             }
             .compositingGroup()
-            // Soft and wide rather than dark and tight: a tight shadow reads
-            // as a black halo, which §47 rules out.
-            .shadow(color: .black.opacity(0.30), radius: 22, x: 0, y: 6)
+            .shadow(color: shadow.colour, radius: shadow.radius, x: 0, y: shadow.y)
             .shadow(color: .black.opacity(0.12), radius: 4, x: 0, y: 1)
-    }
-
-    private var baseFill: Color {
-        // Almost-black graphite rather than pure black, so the surface still
-        // reads as a material when it happens to sit over black content.
-        let opacity = reduceTransparency ? 1.0 : 0.78
-        return Color(red: 0.055, green: 0.058, blue: 0.065).opacity(opacity)
     }
 }
 

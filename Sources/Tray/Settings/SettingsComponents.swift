@@ -18,8 +18,11 @@ enum SettingsMetrics {
     static var dividerInset: CGFloat { rowHorizontalPadding + iconColumnWidth + iconSpacing }
 
     static let sidebarWidth: CGFloat = 186
-    static let detailWidth: CGFloat = 468
-    static let windowHeight: CGFloat = 486
+    // Wide enough that most row descriptions fit on one line, which is
+    // what keeps the Tray pane from needing to be scrolled to reach its last
+    // card.
+    static let detailWidth: CGFloat = 504
+    static let windowHeight: CGFloat = 528
 }
 
 /// A group of related rows.

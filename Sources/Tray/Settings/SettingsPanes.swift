@@ -163,6 +163,25 @@ struct TrayPane: View {
 
                 SettingsRowDivider()
 
+                SettingsRowDivider()
+
+                SettingsRow(
+                    icon: "hand.tap",
+                    title: "Stay open after a click",
+                    description: settings.staysOpenAfterClick
+                        ? "A tray you have clicked into waits for a click elsewhere, or Escape."
+                        : "The tray always closes when the pointer leaves."
+                ) {
+                    Toggle("", isOn: Binding(
+                        get: { settings.staysOpenAfterClick },
+                        set: { settings.staysOpenAfterClick = $0 }
+                    ))
+                    .toggleStyle(.switch)
+                    .controlSize(.small)
+                }
+
+                SettingsRowDivider()
+
                 SettingsRow(
                     icon: "textformat",
                     title: "Show file names",
@@ -174,6 +193,28 @@ struct TrayPane: View {
                     ))
                     .toggleStyle(.switch)
                     .controlSize(.small)
+                }
+            }
+
+            SettingsCard(
+                title: "Appearance",
+                footnote: "Tray keeps its own look rather than following the system between light and dark."
+            ) {
+                SettingsRow(
+                    icon: "circle.lefthalf.filled",
+                    title: "Surface",
+                    description: settings.appearance.note
+                ) {
+                    Picker("", selection: Binding(
+                        get: { settings.appearance },
+                        set: { settings.appearance = $0 }
+                    )) {
+                        ForEach(TrayAppearance.allCases, id: \.self) { option in
+                            Text(option.title).tag(option)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .frame(width: 148)
                 }
             }
         }

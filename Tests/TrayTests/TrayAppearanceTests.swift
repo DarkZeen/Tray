@@ -65,7 +65,15 @@ struct TrayAppearanceTests {
         try render("08-expanded-notched", geometry: notched, items: 4, state: .expanded)
         try render("09-selected", geometry: notchless, items: 4, state: .expanded, selecting: [1, 2])
 
-        #expect(try FileManager.default.contentsOfDirectory(atPath: output.path).count >= 9)
+        // The two surfaces that are not the default. Light has to stay legible
+        // with its ink flipped; pitch black has to stay findable with almost no
+        // edge of its own.
+        try render("10-light", geometry: notchless, items: 4, state: .expanded, appearance: .light)
+        try render("11-light-empty", geometry: notchless, items: 0, state: .expanded, appearance: .light)
+        try render("12-black", geometry: notchless, items: 4, state: .expanded, appearance: .black)
+        try render("13-black-notched", geometry: notched, items: 3, state: .collapsed, appearance: .black)
+
+        #expect(try FileManager.default.contentsOfDirectory(atPath: output.path).count >= 13)
     }
 
     /// The images the README shows.
@@ -90,6 +98,19 @@ struct TrayAppearanceTests {
         try renderAsset("shelf", into: assets, geometry: screen, items: 5, state: .expanded)
         try renderAsset("closed", into: assets, geometry: screen, items: 3, state: .collapsed)
         try renderAsset("drop", into: assets, geometry: screen, items: 0, state: .dragOver)
+
+        // The three surfaces, matched in size so they can sit in a row.
+        for appearance in TrayAppearance.allCases {
+            try renderAsset(
+                "surface-\(appearance.rawValue)",
+                into: assets,
+                geometry: screen,
+                items: 3,
+                state: .expanded,
+                appearance: appearance,
+                size: CGSize(width: 460, height: 150)
+            )
+        }
     }
 
     private func renderAsset(
@@ -97,7 +118,9 @@ struct TrayAppearanceTests {
         into directory: URL,
         geometry: ScreenGeometry,
         items: Int,
-        state: TrayPresentationState
+        state: TrayPresentationState,
+        appearance: TrayAppearance = .graphite,
+        size: CGSize = CGSize(width: 900, height: 220)
     ) throws {
         let store = TrayStore()
         store.add(Self.sampleURLs(count: items))
@@ -115,7 +138,7 @@ struct TrayAppearanceTests {
             presenter: presenter,
             selection: TraySelection(),
             thumbnails: ThumbnailProvider(),
-            settings: SettingsStore(defaults: Self.emptyDefaults()),
+            settings: Self.settings(appearance: appearance),
             geometry: geometry,
             onRemove: { _ in }, onCopy: { _ in }, onClick: { _, _ in },
             onReveal: { _ in }, onQuickLook: { _ in },
@@ -124,7 +147,7 @@ struct TrayAppearanceTests {
         )
         .background(Self.wallpaper)
 
-        guard let png = Self.rasterize(view, size: CGSize(width: 900, height: 220)) else {
+        guard let png = Self.rasterize(view, size: size) else {
             Issue.record("could not render \(name)")
             return
         }
@@ -138,7 +161,8 @@ struct TrayAppearanceTests {
         geometry: ScreenGeometry,
         items: Int,
         state: TrayPresentationState,
-        selecting indices: [Int] = []
+        selecting indices: [Int] = [],
+        appearance: TrayAppearance = .graphite
     ) throws {
         let store = TrayStore()
         store.add(Self.sampleURLs(count: items))
@@ -161,7 +185,7 @@ struct TrayAppearanceTests {
             presenter: presenter,
             selection: selection,
             thumbnails: ThumbnailProvider(),
-            settings: SettingsStore(defaults: Self.emptyDefaults()),
+            settings: Self.settings(appearance: appearance),
             geometry: geometry,
             onRemove: { _ in }, onCopy: { _ in }, onClick: { _, _ in },
             onReveal: { _ in }, onQuickLook: { _ in },
@@ -233,6 +257,12 @@ struct TrayAppearanceTests {
             includingPropertiesForKeys: nil
         )) ?? []
         return Array(candidates.prefix(count))
+    }
+
+    private static func settings(appearance: TrayAppearance) -> SettingsStore {
+        let settings = SettingsStore(defaults: emptyDefaults())
+        settings.appearance = appearance
+        return settings
     }
 
     private static func emptyDefaults() -> UserDefaults {

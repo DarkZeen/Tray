@@ -34,8 +34,10 @@ struct TrayContentView: View {
             Spacer(minLength: 0)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        // The tray keeps its own appearance in both system appearances (§49).
-        .environment(\.colorScheme, .dark)
+        // The tray keeps its own appearance rather than following the system's
+        // (§49). Which one it keeps is now the user's choice.
+        .environment(\.trayPalette, palette)
+        .environment(\.colorScheme, palette.colorScheme)
     }
 
     // MARK: - The surface
@@ -68,11 +70,14 @@ struct TrayContentView: View {
         // Scaling from the centre would lift it off the edge of the screen.
         .scaleEffect(presenter.state.containerScale, anchor: .top)
         .animation(containerAnimation, value: shape)
+        .animation(TrayAnimation.hover, value: palette)
         .animation(TrayAnimation.hover, value: presenter.state)
         .accessibilityElement(children: .contain)
         .accessibilityLabel(accessibilityLabel)
         .onChange(of: shape, initial: true) { _, new in onShapeChange(new) }
     }
+
+    private var palette: TrayPalette { settings.appearance.palette }
 
     private var isOpen: Bool { presenter.state.isOpen }
 
@@ -98,13 +103,13 @@ struct TrayContentView: View {
             HStack(spacing: 4) {
                 ForEach(0..<min(store.count, 3), id: \.self) { _ in
                     Circle()
-                        .fill(.white.opacity(0.55))
+                        .fill(palette.ink(0.55))
                         .frame(width: 4, height: 4)
                 }
                 if store.count > 3 {
                     Text("\(store.count)")
                         .font(.system(size: 9, weight: .semibold, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.55))
+                        .foregroundStyle(palette.ink(0.55))
                         .padding(.leading, 1)
                 }
             }
@@ -133,12 +138,12 @@ struct TrayContentView: View {
                 ? "arrow.down.circle.fill"
                 : "tray")
                 .font(.system(size: 16, weight: .regular))
-                .foregroundStyle(.white.opacity(presenter.state.isDropTargetActive ? 0.85 : 0.4))
+                .foregroundStyle(palette.ink(presenter.state.isDropTargetActive ? 0.85 : 0.4))
                 .contentTransition(.symbolEffect(.replace))
 
             Text(presenter.state.isDropTargetActive ? "Release to stash" : "Drop files here")
                 .font(.system(size: 11, weight: .medium))
-                .foregroundStyle(.white.opacity(presenter.state.isDropTargetActive ? 0.8 : 0.42))
+                .foregroundStyle(palette.ink(presenter.state.isDropTargetActive ? 0.8 : 0.42))
         }
         .animation(TrayAnimation.hover, value: presenter.state)
     }

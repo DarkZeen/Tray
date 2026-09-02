@@ -49,6 +49,7 @@ final class TrayWindowController {
         self.dropView = TrayDropView(frame: NSRect(origin: .zero, size: frame.size))
 
         presenter.collapseDelay = { [settings] in settings.autoCollapseDelay }
+        presenter.holdsOpenWhenClicked = { [settings] in settings.staysOpenAfterClick }
 
         configureContent()
         configureMouseHandling()

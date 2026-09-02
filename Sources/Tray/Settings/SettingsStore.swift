@@ -32,6 +32,8 @@ final class SettingsStore {
         static let activation = "activation"
         static let autoCollapseDelay = "autoCollapseDelay"
         static let showsFileNames = "showsFileNames"
+        static let staysOpenAfterClick = "staysOpenAfterClick"
+        static let appearance = "appearance"
     }
 
     private let defaults: UserDefaults
@@ -79,6 +81,21 @@ final class SettingsStore {
         didSet { defaults.set(showsFileNames, forKey: Key.showsFileNames) }
     }
 
+    /// Whether clicking into the tray pins it open until it is dismissed.
+    ///
+    /// On, a tray you have clicked into waits for a click elsewhere or Escape,
+    /// so that reaching for the keyboard does not close the thing you were
+    /// reaching for. Off, the pointer leaving always closes it, and the
+    /// keyboard only works while you are hovering.
+    var staysOpenAfterClick: Bool {
+        didSet { defaults.set(staysOpenAfterClick, forKey: Key.staysOpenAfterClick) }
+    }
+
+    /// How the tray surface is painted (§49).
+    var appearance: TrayAppearance {
+        didSet { defaults.set(appearance.rawValue, forKey: Key.appearance) }
+    }
+
     static let collapseDelayRange: ClosedRange<Double> = 0...3.0
 
     /// Below this, the delay reads as "immediately" rather than as a number.
@@ -92,6 +109,8 @@ final class SettingsStore {
             Key.showsFileNames: true,
             Key.activation: Activation.both.rawValue,
             Key.autoCollapseDelay: 0.0,
+            Key.staysOpenAfterClick: true,
+            Key.appearance: TrayAppearance.graphite.rawValue,
         ])
 
         // `object(forKey:)` rather than `bool(forKey:)`, so an absent key
@@ -100,8 +119,11 @@ final class SettingsStore {
         showsMenuBarIcon = defaults.bool(forKey: Key.showsMenuBarIcon)
         showsFileNames = defaults.bool(forKey: Key.showsFileNames)
         autoCollapseDelay = defaults.double(forKey: Key.autoCollapseDelay)
+        staysOpenAfterClick = defaults.bool(forKey: Key.staysOpenAfterClick)
         activation = Activation(rawValue: defaults.string(forKey: Key.activation) ?? "")
             ?? .both
+        appearance = TrayAppearance(rawValue: defaults.string(forKey: Key.appearance) ?? "")
+            ?? .graphite
 
         Diagnostics.logger("settings").debug(
             """

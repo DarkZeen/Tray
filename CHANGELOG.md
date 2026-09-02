@@ -8,6 +8,13 @@ All notable changes to Tray are recorded here. The format follows
 
 ### Added
 
+- Three surfaces, chosen in Settings. Graphite is the default; Light flips the
+  ink so it stays legible; Pitch black is fully opaque and the same black as
+  the camera housing, so on a notched Mac the shelf reads as the notch growing
+  rather than as something hanging below it.
+- *Stay open after a click*, which turns off the rule that a tray you have
+  clicked into waits to be dismissed. With it off, the pointer leaving always
+  closes the shelf.
 - Keyboard control of the shelf. Click an item to select it, then Delete to
   remove it, Space to Quick Look it, ⌘C to copy it and ⌘V to paste files in.
   ⌘-click selects several, ⌘A selects everything, the arrow keys walk along the

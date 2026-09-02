@@ -45,6 +45,7 @@ That is the entire product. There is no media player, no clipboard history, no w
 - **Or use the keyboard.** Click an item and press Delete to take it off the shelf, Space to Quick Look it, ⌘C to copy it, ⌘V to paste files in from anywhere. ⌘-click picks out several, ⌘A takes the lot, arrow keys walk along, Escape closes.
 - **It knows about the notch.** On a MacBook with a camera housing the closed shelf *is* the housing — same width, same height, hanging off the same edge. On any other display it is a small capsule in the same place. Both are measured from the display, never hardcoded, so external monitors and scaling changes are just other numbers.
 - **Every display gets one.** Drag toward the top of your second monitor and that monitor's shelf answers. Connect or disconnect a screen and the shelves follow.
+- **Three surfaces.** Graphite by default. Light, if you would rather the shelf sat with a pale desktop than against it. Or pitch black — the same black as the camera housing, with nothing showing through, so on a MacBook the shelf reads as the notch itself growing.
 - **It stays out of the way.** Empty and idle, the tray is a faint line you can ignore. Holding something, it is a small pill with a dot per file. It opens as the pointer arrives and closes as the pointer leaves. Hovering and dropping never take focus, so throwing a file at it does not pull you out of whatever you were doing — only clicking into it does, and only so the keyboard has something to talk to.
 - **Secondary click for the rest.** Remove from Tray, Reveal in Finder, Quick Look. Three items, because it is a shelf and not a file manager.
 
@@ -53,11 +54,17 @@ That is the entire product. There is no media player, no clipboard history, no w
   <img src="docs/assets/readme/drop.png" width="380" alt="The tray with a drag overhead, reading Release to stash">
 </p>
 
+<p align="center">
+  <img src="docs/assets/readme/surface-graphite.png" width="250" alt="The tray in graphite: dark and slightly translucent">
+  <img src="docs/assets/readme/surface-light.png" width="250" alt="The tray in light: a pale translucent surface with dark file names">
+  <img src="docs/assets/readme/surface-black.png" width="250" alt="The tray in pitch black: fully opaque, the same black as the notch">
+</p>
+
 ## Settings
 
 Four pages, and most of them you will open once. General has Launch at Login and the menu bar icon; Tray has what opens the shelf, how long it waits before closing, and whether file names show. Opening Tray while it is already running opens this window — an app with no Dock icon has to have a front door somewhere.
 
-By default the shelf closes the moment the pointer leaves. If you would rather it lingered, the *Close after* slider goes up to three seconds.
+By default the shelf closes the moment the pointer leaves, and a tray you have clicked into waits for a click elsewhere so that reaching for the keyboard does not close it. Both are settings: *Close after* goes up to three seconds, and *Stay open after a click* turns the second behaviour off entirely. *Surface* picks between the three looks.
 
 The Privacy page is the one worth a look. It is the same page other menu bar apps use to explain which permissions they need — except that Tray's version is a list of the ones it does not.
 
