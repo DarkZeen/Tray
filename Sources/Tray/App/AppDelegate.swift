@@ -9,6 +9,8 @@ import Quartz
 final class AppDelegate: NSObject, NSApplicationDelegate {
     let state = AppState()
 
+    private let logger = Diagnostics.logger("app-delegate")
+
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Belt and braces alongside `LSUIElement` in Info.plist: an accessory
         // app has no Dock tile and never becomes the active application by
@@ -34,6 +36,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     ///     tray://settings   show the settings window
     func application(_ application: NSApplication, open urls: [URL]) {
         MainActor.assumeIsolated {
+            logger.notice("Opened with \(urls.count, privacy: .public) URL(s).")
             for url in urls where url.scheme == "tray" {
                 switch url.host() {
                 case "open": state.displays.openActive()
@@ -54,7 +57,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         _ sender: NSApplication,
         hasVisibleWindows: Bool
     ) -> Bool {
-        MainActor.assumeIsolated { state.showSettings() }
+        MainActor.assumeIsolated {
+            // Notice rather than debug: this is the path the Control Center
+            // control takes, and when it does not fire there is nothing else to
+            // look at.
+            logger.notice("Reopened (visible windows: \(hasVisibleWindows, privacy: .public)); showing Settings.")
+            state.showSettings()
+        }
         return true
     }
 

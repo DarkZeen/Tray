@@ -32,21 +32,23 @@ struct OpenTrayControl: ControlWidget {
 
 /// What the button does.
 ///
-/// A URL rather than simply opening the app, so it works the same whether Tray
-/// is already running or not: LaunchServices starts the app if it has to, then
-/// delivers the URL either way.
+/// Opens the app, which for an agent app with no windows means "show
+/// Settings" — see `applicationShouldHandleReopen`.
 ///
-/// It opens Settings rather than the shelf. The shelf was the obvious first
-/// choice and the wrong one — it appears at the top of the screen and closes
-/// itself a moment later, so pressing a control in Control Center and watching
-/// Control Center shows you nothing at all.
+/// The first attempt returned `OpenURLIntent(tray://settings)` instead. That
+/// looked more precise and did not work: the press activated Tray but the URL
+/// never arrived, so the app came forward and did nothing. `openAppWhenRun` is
+/// the plainer mechanism and the one already verified end to end — opening the
+/// app is exactly what shows Settings.
+///
+/// The `tray://` URLs stay, because they are useful to a script or a Shortcut
+/// even though the control no longer needs them.
 struct OpenTraySettingsIntent: AppIntent {
     static let title: LocalizedStringResource = "Tray Settings"
     static let description = IntentDescription("Opens Tray's settings.")
+    static let openAppWhenRun = true
 
-    static let settingsURL = URL(string: "tray://settings")!
-
-    func perform() async throws -> some IntentResult & OpensIntent {
-        .result(opensIntent: OpenURLIntent(Self.settingsURL))
+    func perform() async throws -> some IntentResult {
+        .result()
     }
 }
