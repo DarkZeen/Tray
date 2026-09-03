@@ -21,8 +21,8 @@ struct TrayContentView: View {
     let onClick: (TrayItem, NSEvent.ModifierFlags) -> Void
     let onReveal: (TrayItem) -> Void
     let onQuickLook: (TrayItem) -> Void
-    let onItemDragBegan: (TrayItem) -> Void
-    let onItemDragEnded: (TrayItem, Bool) -> Void
+    let onItemDragBegan: ([TrayItem]) -> Void
+    let onItemDragEnded: ([TrayItem], Bool) -> Void
 
     /// Reported upward so the AppKit layer can keep its hit regions exactly on
     /// the pixels the user can see (§74).
@@ -210,15 +210,16 @@ struct TrayContentView: View {
                     item: item,
                     thumbnails: thumbnails,
                     metrics: settings.itemMetrics,
-                    isBeingDragged: presenter.state.draggedItemID == item.id,
+                    isBeingDragged: presenter.state.draggedItemIDs.contains(item.id),
                     isSelected: selection.contains(item.id),
-                    onDragBegan: { onItemDragBegan(item) },
-                    onDragEnded: { onItemDragEnded(item, $0) },
+                    dragTargets: { selectionTargets(for: item) },
+                    onDragBegan: onItemDragBegan,
+                    onDragEnded: onItemDragEnded,
                     onRemove: { onRemove(item) },
                     onReveal: { onReveal(item) },
                     onQuickLook: { onQuickLook(item) },
                     onClick: { onClick(item, $0) },
-                    onCopy: { onCopy(copyTargets(for: item)) }
+                    onCopy: { onCopy(selectionTargets(for: item)) }
                 )
                 .transition(motion.itemTransition)
             }
@@ -241,10 +242,14 @@ struct TrayContentView: View {
         )
     }
 
-    /// Copying from an item's own menu copies the whole selection when that
-    /// item is part of it, and just that item when it is not — the same rule
-    /// Finder uses, so a right-click never silently narrows what you picked.
-    private func copyTargets(for item: TrayItem) -> [TrayItem] {
+    /// Which items an action on `item` applies to.
+    ///
+    /// The whole selection when this item is part of it, just this one when it
+    /// is not — the same rule Finder uses, so acting on an item never silently
+    /// narrows or widens what you picked. Copy and drag share it: a selection
+    /// of five that copies five but drags one is the kind of inconsistency
+    /// nobody can predict.
+    private func selectionTargets(for item: TrayItem) -> [TrayItem] {
         guard selection.contains(item.id) else { return [item] }
         return selection.items(from: store.items)
     }

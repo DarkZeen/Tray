@@ -17,16 +17,21 @@ import SwiftUI
 final class ItemInteractionView: NSView {
     var item: TrayItem
     var onHoverChanged: (Bool) -> Void = { _ in }
-    var onDragBegan: () -> Void = {}
-    var onDragEnded: (Bool) -> Void = { _ in }
+    /// Everything this drag should carry. Resolved at the moment the drag
+    /// starts and held for its duration, because the selection can change
+    /// underneath a drag that is already in flight.
+    var dragPayload: () -> [TrayItem] = { [] }
+    var dragImage: (TrayItem) -> NSImage? = { _ in nil }
+    var onDragBegan: ([TrayItem]) -> Void = { _ in }
+    var onDragEnded: ([TrayItem], Bool) -> Void = { _, _ in }
     var onOpenQuickLook: () -> Void = {}
     /// A plain click. The modifier flags come along so ⌘-click can extend the
     /// selection rather than replace it.
     var onClick: (NSEvent.ModifierFlags) -> Void = { _ in }
     var menuBuilder: () -> NSMenu? = { nil }
-    var dragImage: () -> NSImage? = { nil }
 
     private var trackingArea: NSTrackingArea?
+    private var itemsInFlight: [TrayItem] = []
     private var mouseDownEvent: NSEvent?
 
     /// How far the pointer must travel with the button down before this counts
@@ -114,28 +119,40 @@ final class ItemInteractionView: NSView {
     }
 
     private func beginDrag(with event: NSEvent) {
-        guard item.isAvailable else { return }
+        let payload = dragPayload().filter(\.isAvailable)
+        guard !payload.isEmpty else { return }
 
         // `NSURL` is the pasteboard writer every file destination on macOS
-        // understands. The tray writes a reference to the original file; it
+        // understands. The tray writes a reference to each original file; it
         // never has a copy to offer (§3, §38).
-        let draggingItem = NSDraggingItem(pasteboardWriter: item.url as NSURL)
+        let draggingItems = payload.enumerated().map { index, item -> NSDraggingItem in
+            let draggingItem = NSDraggingItem(pasteboardWriter: item.url as NSURL)
 
-        if let image = dragImage() {
+            guard let image = dragImage(item) else {
+                draggingItem.setDraggingFrame(bounds, contents: nil)
+                return draggingItem
+            }
+
+            // Cascaded rather than stacked exactly: several files under the
+            // pointer should read as several, and identical frames would hide
+            // all but the last.
+            let offset = CGFloat(index) * 5
             let size = image.size
-            let frame = NSRect(
-                x: bounds.midX - size.width / 2,
-                y: bounds.midY - size.height / 2,
-                width: size.width,
-                height: size.height
+            draggingItem.setDraggingFrame(
+                NSRect(
+                    x: bounds.midX - size.width / 2 + offset,
+                    y: bounds.midY - size.height / 2 - offset,
+                    width: size.width,
+                    height: size.height
+                ),
+                contents: image
             )
-            draggingItem.setDraggingFrame(frame, contents: image)
-        } else {
-            draggingItem.setDraggingFrame(bounds, contents: nil)
+            return draggingItem
         }
 
-        onDragBegan()
-        beginDraggingSession(with: [draggingItem], event: event, source: self)
+        itemsInFlight = payload
+        onDragBegan(payload)
+        beginDraggingSession(with: draggingItems, event: event, source: self)
     }
 
     // MARK: - Context menu (§23)
@@ -172,7 +189,9 @@ extension ItemInteractionView: NSDraggingSource {
         endedAt screenPoint: NSPoint,
         operation: NSDragOperation
     ) {
-        onDragEnded(operation != [])
+        let carried = itemsInFlight
+        itemsInFlight = []
+        onDragEnded(carried, operation != [])
     }
 }
 
@@ -180,12 +199,13 @@ extension ItemInteractionView: NSDraggingSource {
 struct ItemInteractionLayer: NSViewRepresentable {
     let item: TrayItem
     let onHoverChanged: (Bool) -> Void
-    let onDragBegan: () -> Void
-    let onDragEnded: (Bool) -> Void
+    let dragPayload: () -> [TrayItem]
+    let onDragBegan: ([TrayItem]) -> Void
+    let onDragEnded: ([TrayItem], Bool) -> Void
     let onOpenQuickLook: () -> Void
     let onClick: (NSEvent.ModifierFlags) -> Void
     let menuBuilder: () -> NSMenu?
-    let dragImage: () -> NSImage?
+    let dragImage: (TrayItem) -> NSImage?
 
     func makeNSView(context: Context) -> ItemInteractionView {
         let view = ItemInteractionView(item: item)
@@ -200,6 +220,7 @@ struct ItemInteractionLayer: NSViewRepresentable {
 
     private func apply(to view: ItemInteractionView) {
         view.onHoverChanged = onHoverChanged
+        view.dragPayload = dragPayload
         view.onDragBegan = onDragBegan
         view.onDragEnded = onDragEnded
         view.onOpenQuickLook = onOpenQuickLook

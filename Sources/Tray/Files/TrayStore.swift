@@ -20,6 +20,10 @@ final class TrayStore {
     var isEmpty: Bool { items.isEmpty }
     var count: Int { items.count }
 
+    /// No more will fit. A drop has to be refused rather than accepted and
+    /// quietly dropped on the floor.
+    var isFull: Bool { items.count >= Self.capacity }
+
     // MARK: - Adding
 
     enum AddOutcome: Equatable {

@@ -58,7 +58,7 @@ final class TrayDropView: NSView {
     var onDragExit: () -> Void = {}
     var onDragSessionEnded: () -> Void = {}
     var onDragApproach: () -> Void = {}
-    var canAcceptDrag: (any NSDraggingInfo) -> Bool = { _ in false }
+    var dragAcceptance: (any NSDraggingInfo) -> FileDropHandler.Acceptance = { _ in .unsupported }
     var performDrop: (any NSDraggingInfo) -> Bool = { _ in false }
 
     private var trackingArea: NSTrackingArea?
@@ -257,15 +257,34 @@ final class TrayDropView: NSView {
     // MARK: - Drag destination (§13, §14, §38)
 
     override func draggingEntered(_ sender: any NSDraggingInfo) -> NSDragOperation {
-        guard canAcceptDrag(sender) else { return [] }
-        updateDragPhase(for: sender)
-        return FileDropHandler.advertisedOperation
+        respond(to: sender)
     }
 
     override func draggingUpdated(_ sender: any NSDraggingInfo) -> NSDragOperation {
-        guard canAcceptDrag(sender) else { return [] }
-        updateDragPhase(for: sender)
-        return FileDropHandler.advertisedOperation
+        respond(to: sender)
+    }
+
+    /// Answers macOS's question "what will you do with this?" honestly.
+    ///
+    /// A full shelf opens but advertises nothing, so the pointer shows the
+    /// refusal and the file flies back — macOS's own vocabulary for a drop that
+    /// will not work. Claiming `.copy` and then quietly discarding the file is
+    /// the one answer that is worse than saying no.
+    private func respond(to sender: any NSDraggingInfo) -> NSDragOperation {
+        switch dragAcceptance(sender) {
+        case .accept:
+            updateDragPhase(for: sender)
+            return FileDropHandler.advertisedOperation
+
+        case .full:
+            // Still open: being shown a shelf with everything already on it
+            // explains the refusal better than a message would.
+            onDragApproach()
+            return []
+
+        case .unsupported:
+            return []
+        }
     }
 
     override func draggingExited(_ sender: (any NSDraggingInfo)?) {
@@ -283,7 +302,7 @@ final class TrayDropView: NSView {
     }
 
     override func prepareForDragOperation(_ sender: any NSDraggingInfo) -> Bool {
-        canAcceptDrag(sender)
+        dragAcceptance(sender) == .accept
     }
 
     override func performDragOperation(_ sender: any NSDraggingInfo) -> Bool {

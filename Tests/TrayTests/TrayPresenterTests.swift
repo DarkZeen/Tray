@@ -94,10 +94,32 @@ struct TrayPresenterTests {
         tray.open()
         let id = UUID()
 
-        tray.beganDraggingItem(id: id)
+        tray.beganDraggingItems(ids: [id])
 
-        #expect(tray.state == .draggingItem(id))
+        #expect(tray.state == .draggingItems([id]))
         #expect(tray.state.isOpen)
+    }
+
+    @Test func `a whole selection can leave together`() {
+        // A state that could only hold one id meant the rest of a dragged
+        // selection carried on looking like it had stayed behind.
+        let tray = presenter(closeAfter: 0)
+        tray.open()
+        let ids: Set<UUID> = [UUID(), UUID(), UUID()]
+
+        tray.beganDraggingItems(ids: ids)
+
+        #expect(tray.state.draggedItemIDs == ids)
+        for id in ids { #expect(tray.state.draggedItemIDs.contains(id)) }
+    }
+
+    @Test func `dragging nothing is not a drag`() {
+        let tray = presenter(closeAfter: 0)
+        tray.open()
+
+        tray.beganDraggingItems(ids: [])
+
+        #expect(tray.state == .expanded)
     }
 
     @Test func `escape closes a tray that is being worked in`() {

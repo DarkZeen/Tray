@@ -207,13 +207,14 @@ final class TrayPresenter {
 
     // MARK: - Dragging items out (§21, §22)
 
-    func beganDraggingItem(id: TrayItem.ID) {
+    func beganDraggingItems(ids: Set<TrayItem.ID>) {
+        guard !ids.isEmpty else { return }
         cancelScheduledCollapse()
-        transition(to: .draggingItem(id))
+        transition(to: .draggingItems(ids))
     }
 
-    func endedDraggingItem() {
-        guard state.draggedItemID != nil else { return }
+    func endedDraggingItems() {
+        guard !state.draggedItemIDs.isEmpty else { return }
         transition(to: .expanded)
         if !pointerIsInside {
             scheduleCollapse(after: collapseDelay())

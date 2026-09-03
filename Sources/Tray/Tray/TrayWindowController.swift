@@ -145,11 +145,11 @@ final class TrayWindowController {
             onQuickLook: { [weak self] item in
                 self?.onQuickLookRequest?(item)
             },
-            onItemDragBegan: { [weak self] item in
-                self?.presenter.beganDraggingItem(id: item.id)
+            onItemDragBegan: { [weak self] items in
+                self?.presenter.beganDraggingItems(ids: Set(items.map(\.id)))
             },
-            onItemDragEnded: { [weak self] item, didLand in
-                self?.finishItemDrag(item, didLand: didLand)
+            onItemDragEnded: { [weak self] items, didLand in
+                self?.finishItemDrag(items, didLand: didLand)
             },
             onShapeChange: { [weak self] shape in
                 self?.updateHitRegions(for: shape)
@@ -197,9 +197,9 @@ final class TrayWindowController {
             self?.presenter.pointerExited()
         }
 
-        dropView.canAcceptDrag = { [weak self] info in
-            guard let self, self.settings.activation.allowsDrag else { return false }
-            return self.dropHandler.canAccept(info)
+        dropView.dragAcceptance = { [weak self] info in
+            guard let self, self.settings.activation.allowsDrag else { return .unsupported }
+            return self.dropHandler.acceptance(of: info)
         }
 
         dropView.onDragApproach = { [weak self] in
@@ -338,23 +338,39 @@ final class TrayWindowController {
     /// original files (§3, §38).
     private func accept(_ info: any NSDraggingInfo) -> Bool {
         store.refreshAvailability()
-        let landed = dropHandler.accept(info)
+        let outcome = dropHandler.accept(info)
         presenter.dropCompleted()
 
-        logger.debug("Drop accepted: \(landed.count, privacy: .public) new item(s).")
-        // An all-duplicates drop is still a successful drop as far as the
-        // source is concerned — the file the user aimed at is on the shelf.
-        return true
+        switch outcome {
+        case .added(let ids):
+            logger.debug("Drop accepted: \(ids.count, privacy: .public) new item(s).")
+            return true
+
+        case .allDuplicates:
+            // Still a successful drop as far as the source is concerned — the
+            // file the user aimed at is on the shelf, it was already there.
+            return true
+
+        case .rejectedAtCapacity:
+            // Reported as a failure so the file flies back. Returning true here
+            // would animate a successful drop and then discard the file, which
+            // is the one outcome worse than refusing it.
+            logger.notice("Drop refused: the shelf is full.")
+            return false
+
+        case .nothingUsable:
+            return false
+        }
     }
 
-    private func finishItemDrag(_ item: TrayItem, didLand: Bool) {
-        presenter.endedDraggingItem()
+    private func finishItemDrag(_ items: [TrayItem], didLand: Bool) {
+        presenter.endedDraggingItems()
 
-        // Landed somewhere: the item has done its job and leaves the shelf
-        // (§22). Cancelled: it springs back, which is the absence of any
-        // change here plus the scale animation unwinding.
+        // Landed somewhere: they have done their job and leave the shelf (§22).
+        // Cancelled: they spring back, which is the absence of any change here
+        // plus the scale animation unwinding.
         if didLand {
-            remove([item])
+            remove(items)
         }
     }
 

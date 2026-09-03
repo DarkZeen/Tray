@@ -217,3 +217,84 @@ struct TrayStoreTests {
         #expect(store.contains(url: directory.appendingPathComponent("absent.txt")) == false)
     }
 }
+
+/// What the tray tells a drag source it will do (§38, §80).
+@MainActor
+struct DropAcceptanceTests {
+    private let directory: URL
+
+    init() throws {
+        directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("DropAcceptance-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+    }
+
+    private func makeFile(_ name: String) throws -> URL {
+        let url = directory.appendingPathComponent(name)
+        try Data("contents".utf8).write(to: url)
+        return url
+    }
+
+    private func filled(to count: Int) throws -> TrayStore {
+        let store = TrayStore()
+        store.add(try (0..<count).map { try makeFile("file-\($0).txt") })
+        return store
+    }
+
+    @Test func `an empty shelf takes files`() {
+        let handler = FileDropHandler(store: TrayStore())
+
+        #expect(handler.acceptance(carryingFiles: true) == .accept)
+    }
+
+    @Test func `a full shelf refuses rather than pretending`() throws {
+        // Advertising `.copy` and then discarding the file is the one outcome
+        // worse than refusing it: the drop animates as a success and nothing
+        // arrives.
+        let handler = FileDropHandler(store: try filled(to: TrayStore.capacity))
+
+        #expect(handler.acceptance(carryingFiles: true) == .full)
+    }
+
+    @Test func `a shelf with one space left still takes files`() throws {
+        let handler = FileDropHandler(store: try filled(to: TrayStore.capacity - 1))
+
+        #expect(handler.acceptance(carryingFiles: true) == .accept)
+    }
+
+    @Test func `a drag carrying no files is not the tray's business`() {
+        #expect(FileDropHandler(store: TrayStore()).acceptance(carryingFiles: false) == .unsupported)
+    }
+
+    @Test func `a full shelf reports the refusal, not an empty success`() throws {
+        let store = try filled(to: TrayStore.capacity)
+
+        // The caller distinguishes these: "nothing landed because there was no
+        // room" has to fail the drop, while "nothing landed because it was
+        // already here" must not.
+        #expect(store.add(try makeFile("late.txt")) == .rejectedAtCapacity)
+        #expect(store.add(store.items[0].url) == .allDuplicates)
+    }
+
+    @Test func `a partly filled drop still counts as a drop`() throws {
+        // Two of three fit. The file the user aimed at is on the shelf, so the
+        // drop succeeded even though not everything made it.
+        let store = try filled(to: TrayStore.capacity - 2)
+        let incoming = try ["a.txt", "b.txt", "c.txt"].map(makeFile)
+
+        let outcome = store.add(incoming)
+
+        guard case .added(let ids) = outcome else {
+            Issue.record("expected a partial add, got \(outcome)")
+            return
+        }
+        #expect(ids.count == 2)
+        #expect(store.isFull)
+    }
+
+    @Test func `isFull tracks the capacity boundary`() throws {
+        #expect(!TrayStore().isFull)
+        #expect(!(try filled(to: TrayStore.capacity - 1)).isFull)
+        #expect((try filled(to: TrayStore.capacity)).isFull)
+    }
+}

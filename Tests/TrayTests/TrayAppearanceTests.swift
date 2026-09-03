@@ -136,7 +136,7 @@ struct TrayAppearanceTests {
         case .collapsed: presenter.collapseNow()
         case .expanded: presenter.open()
         case .dragOver: presenter.dragEntered()
-        case .draggingItem: break
+        case .draggingItems: break
         }
 
         let view = TrayContentView(
@@ -228,7 +228,7 @@ struct TrayAppearanceTests {
         case .collapsed: presenter.collapseNow()
         case .expanded: presenter.open()
         case .dragOver: presenter.dragEntered()
-        case .draggingItem: break
+        case .draggingItems: break
         }
 
         let view = TrayContentView(

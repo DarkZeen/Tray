@@ -18,22 +18,38 @@ struct FileDropHandler {
     /// untouched.
     static let advertisedOperation: NSDragOperation = .copy
 
-    func canAccept(_ info: any NSDraggingInfo) -> Bool {
-        PasteboardFileReader.containsFileURLs(info.draggingPasteboard)
+    /// What the tray can do with a drag that is currently overhead.
+    enum Acceptance: Equatable {
+        /// Files, and room for them.
+        case accept
+        /// Files, but the shelf is full. Distinct from `unsupported` because
+        /// the tray still opens — being shown a shelf with sixty-four things on
+        /// it explains the refusal better than any message could.
+        case full
+        /// Not something the tray takes.
+        case unsupported
+    }
+
+    func acceptance(of info: any NSDraggingInfo) -> Acceptance {
+        acceptance(carryingFiles: PasteboardFileReader.containsFileURLs(info.draggingPasteboard))
+    }
+
+    /// The decision itself, separated from reading the pasteboard so it can be
+    /// tested without conjuring an `NSDraggingInfo`.
+    func acceptance(carryingFiles: Bool) -> Acceptance {
+        guard carryingFiles else { return .unsupported }
+        return store.isFull ? .full : .accept
     }
 
     /// Stashes whatever the drag was carrying.
     ///
-    /// Returns the ids of items that actually joined the shelf, so the view can
-    /// animate exactly those in and leave the rest alone.
-    @discardableResult
-    func accept(_ info: any NSDraggingInfo) -> [TrayItem.ID] {
+    /// Returns the store's own verdict rather than just the ids that landed,
+    /// because the caller has to tell the *drag source* whether the drop
+    /// worked — and "nothing landed" and "nothing needed to land" are different
+    /// answers to that question.
+    func accept(_ info: any NSDraggingInfo) -> TrayStore.AddOutcome {
         let urls = PasteboardFileReader.fileURLs(from: info.draggingPasteboard)
-        guard !urls.isEmpty else { return [] }
-
-        switch store.add(urls) {
-        case .added(let ids): return ids
-        case .allDuplicates, .rejectedAtCapacity, .nothingUsable: return []
-        }
+        guard !urls.isEmpty else { return .nothingUsable }
+        return store.add(urls)
     }
 }

@@ -23,15 +23,19 @@ enum TrayPresentationState: Equatable, Sendable {
     /// release would stash (§13).
     case dragOver
 
-    /// One of the tray's own items has been picked up and is being carried
+    /// Items of the tray's own have been picked up and are being carried
     /// somewhere (§21, §22).
-    case draggingItem(TrayItem.ID)
+    ///
+    /// A set, not one id: a selection of several can leave together, and a
+    /// state that could only hold one meant the others carried on looking like
+    /// they had stayed behind.
+    case draggingItems(Set<TrayItem.ID>)
 
     /// Is the shelf showing its contents?
     var isOpen: Bool {
         switch self {
         case .collapsed: false
-        case .expanded, .dragOver, .draggingItem: true
+        case .expanded, .dragOver, .draggingItems: true
         }
     }
 
@@ -40,8 +44,8 @@ enum TrayPresentationState: Equatable, Sendable {
         self == .dragOver
     }
 
-    var draggedItemID: TrayItem.ID? {
-        if case .draggingItem(let id) = self { return id }
-        return nil
+    var draggedItemIDs: Set<TrayItem.ID> {
+        if case .draggingItems(let ids) = self { return ids }
+        return []
     }
 }

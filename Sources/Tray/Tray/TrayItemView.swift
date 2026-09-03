@@ -12,8 +12,11 @@ struct TrayItemView: View {
     let isBeingDragged: Bool
     let isSelected: Bool
 
-    let onDragBegan: () -> Void
-    let onDragEnded: (Bool) -> Void
+    /// Every item this drag should carry — the whole selection when this item
+    /// is part of it, just this one when it is not.
+    let dragTargets: () -> [TrayItem]
+    let onDragBegan: ([TrayItem]) -> Void
+    let onDragEnded: ([TrayItem], Bool) -> Void
     let onRemove: () -> Void
     let onReveal: () -> Void
     let onQuickLook: () -> Void
@@ -130,12 +133,18 @@ struct TrayItemView: View {
         ItemInteractionLayer(
             item: item,
             onHoverChanged: { isHovering = $0 },
+            dragPayload: dragTargets,
             onDragBegan: onDragBegan,
             onDragEnded: onDragEnded,
             onOpenQuickLook: onQuickLook,
             onClick: onClick,
             menuBuilder: buildMenu,
-            dragImage: { displayImage }
+            dragImage: { carried in
+                // Each carried file gets its own picture, not this row's.
+                carried.id == item.id
+                    ? displayImage
+                    : thumbnails.immediateImage(for: carried, size: metrics.thumbnailSize)
+            }
         )
     }
 
