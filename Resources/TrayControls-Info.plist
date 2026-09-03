@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>en</string>
+	<key>CFBundleExecutable</key>
+	<string>TrayControls</string>
+	<!-- Must be prefixed by the host app's identifier, or the system will not
+	     associate the extension with it. -->
+	<key>CFBundleIdentifier</key>
+	<string>com.tray.app.controls</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>Tray</string>
+	<key>CFBundleDisplayName</key>
+	<string>Tray</string>
+	<!-- An app extension is an XPC service, not an application. -->
+	<key>CFBundlePackageType</key>
+	<string>XPC!</string>
+	<key>CFBundleShortVersionString</key>
+	<string>0.1.0</string>
+	<key>CFBundleVersion</key>
+	<string>1</string>
+	<key>LSMinimumSystemVersion</key>
+	<string>26.0</string>
+	<key>NSExtension</key>
+	<dict>
+		<!-- What makes this a WidgetKit extension, and therefore what makes
+		     Control Center enumerate its controls. SwiftUI widgets declare no
+		     principal class; the entry point is the @main WidgetBundle. -->
+		<key>NSExtensionPointIdentifier</key>
+		<string>com.apple.widgetkit-extension</string>
+	</dict>
+</dict>
+</plist>

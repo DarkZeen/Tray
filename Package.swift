@@ -48,6 +48,14 @@ let package = Package(
             path: "Sources/Tray",
             swiftSettings: sharedSwiftSettings
         ),
+        // The Control Center extension. A separate executable because an
+        // appex is its own process with its own entry point; `build.sh` puts
+        // the binary this produces inside the app's PlugIns directory.
+        .executableTarget(
+            name: "TrayControls",
+            path: "Sources/TrayControls",
+            swiftSettings: sharedSwiftSettings
+        ),
         .testTarget(
             name: "TrayTests",
             dependencies: ["Tray"],

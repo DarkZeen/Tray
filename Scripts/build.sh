@@ -72,10 +72,14 @@ if [[ $UNIVERSAL -eq 1 ]]; then
     BINARY="$(swift build -c "$CONFIGURATION" --arch arm64 --arch x86_64 --show-bin-path)/$APP_NAME"
 else
     swift build -c "$CONFIGURATION" --arch arm64
+    swift build -c "$CONFIGURATION" --arch arm64 --product TrayControls
     BINARY="$(swift build -c "$CONFIGURATION" --arch arm64 --show-bin-path)/$APP_NAME"
 fi
 
 [[ -f "$BINARY" ]] || { echo "error: no binary at $BINARY" >&2; exit 1; }
+
+BIN_DIR="$(dirname "$BINARY")"
+CONTROLS_BINARY="$BIN_DIR/TrayControls"
 
 # ----------------------------------------------------------------- assemble
 
@@ -97,6 +101,29 @@ cp Resources/Info.plist "$CONTENTS/Info.plist"
 
 printf 'APPL????' > "$CONTENTS/PkgInfo"
 
+# ------------------------------------------------------- Control Center
+
+# The control lives in a widget extension inside the app. Assembled by hand for
+# the same reason the app is: there is no Xcode here to do it (§61).
+if [[ -f "$CONTROLS_BINARY" ]]; then
+    echo "▸ Adding the Control Center extension"
+    APPEX="$CONTENTS/PlugIns/TrayControls.appex"
+    mkdir -p "$APPEX/Contents/MacOS"
+
+    cp "$CONTROLS_BINARY" "$APPEX/Contents/MacOS/TrayControls"
+    chmod +x "$APPEX/Contents/MacOS/TrayControls"
+
+    cp Resources/TrayControls-Info.plist "$APPEX/Contents/Info.plist"
+    /usr/libexec/PlistBuddy -c "Set :CFBundleIdentifier $BUNDLE_ID.controls" \
+        "$APPEX/Contents/Info.plist"
+    /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $VERSION" \
+        "$APPEX/Contents/Info.plist"
+    /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD_NUMBER" \
+        "$APPEX/Contents/Info.plist"
+else
+    echo "▸ No Control Center extension built; skipping"
+fi
+
 echo "▸ Drawing the icon"
 swift Scripts/make-icon.swift "$CONTENTS/Resources/$APP_NAME.icns" >/dev/null
 
@@ -110,6 +137,7 @@ xattr -c -r "$APP"
 # account; the difference is only how far the result travels.
 
 ENTITLEMENTS="$ROOT/Resources/Tray.entitlements"
+APPEX_ENTITLEMENTS="$ROOT/Resources/TrayControls.entitlements"
 # `-v` is omitted deliberately: the local identity from setup-signing.sh is
 # self-signed and therefore untrusted, so it never shows up as "valid" even
 # though codesign signs with it perfectly well (§67, tier 2).
@@ -124,16 +152,35 @@ find_identity() {
 DEVELOPER_ID="${TRAY_SIGNING_IDENTITY:-$(find_identity 'Developer ID Application')}"
 SELF_SIGNED="$(find_identity 'Tray Signing')"
 
+# Nested code is signed first and the app last, so that the app's seal covers
+# an extension that is already final. Signing the other way round leaves the
+# outer signature describing a bundle that then changes underneath it.
+NESTED=()
+[[ -d "$CONTENTS/PlugIns/TrayControls.appex" ]] \
+    && NESTED+=("$CONTENTS/PlugIns/TrayControls.appex")
+
 if [[ -n "$DEVELOPER_ID" ]]; then
     echo "▸ Signing with Developer ID: $DEVELOPER_ID"
+    for nested in "${NESTED[@]}"; do
+        codesign --force --strip-disallowed-xattrs --options runtime --timestamp \
+            --entitlements "$APPEX_ENTITLEMENTS" --sign "$DEVELOPER_ID" "$nested"
+    done
     codesign --force --strip-disallowed-xattrs --options runtime --timestamp \
         --entitlements "$ENTITLEMENTS" --sign "$DEVELOPER_ID" "$APP"
 elif [[ -n "$SELF_SIGNED" ]]; then
     echo "▸ Signing with the local identity: $SELF_SIGNED"
+    for nested in "${NESTED[@]}"; do
+        codesign --force --strip-disallowed-xattrs \
+            --entitlements "$APPEX_ENTITLEMENTS" --sign "$SELF_SIGNED" "$nested"
+    done
     codesign --force --strip-disallowed-xattrs \
         --entitlements "$ENTITLEMENTS" --sign "$SELF_SIGNED" "$APP"
 else
     echo "▸ Signing ad-hoc"
+    for nested in "${NESTED[@]}"; do
+        codesign --force --strip-disallowed-xattrs \
+            --entitlements "$APPEX_ENTITLEMENTS" --sign - "$nested"
+    done
     codesign --force --strip-disallowed-xattrs --sign - "$APP"
     cat >&2 <<'WARNING'
 

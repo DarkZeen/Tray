@@ -22,6 +22,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         false
     }
 
+    /// `tray://open` — how the Control Center button reaches the shelf.
+    ///
+    /// Distinct from being opened normally, which means Settings. Without a
+    /// scheme the two are the same event, and the control would open the wrong
+    /// thing.
+    func application(_ application: NSApplication, open urls: [URL]) {
+        MainActor.assumeIsolated {
+            guard urls.contains(where: { $0.scheme == "tray" }) else { return }
+            state.displays.openActive()
+        }
+    }
+
     /// Opening Tray while it is already running opens Settings.
     ///
     /// An agent app has no Dock tile and no window to bring forward, so

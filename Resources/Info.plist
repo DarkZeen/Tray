@@ -28,6 +28,20 @@
 	<true/>
 	<key>NSHighResolutionCapable</key>
 	<true/>
+	<!-- How the Control Center button reaches the tray. Opening the app is not
+	     enough on its own: an agent app with no windows treats being opened as
+	     "show Settings", which is not what a control called Open Tray means. -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.tray.app.url</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>tray</string>
+			</array>
+		</dict>
+	</array>
 	<key>NSHumanReadableCopyright</key>
 	<string>Tray is available under the MIT License.</string>
 	<key>NSSupportsAutomaticTermination</key>

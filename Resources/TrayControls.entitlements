@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<!--
+  The extension is sandboxed; the app is not (§39).
+
+  That is not an inconsistency — macOS requires it. PlugInKit refuses to
+  register an app extension without the sandbox entitlement, with exactly the
+  words "plug-ins must be sandboxed", and refuses silently as far as the user
+  is concerned: the control simply never appears.
+
+  Nothing else is granted. The control opens the app; it touches no files, no
+  network and no devices, so it needs no capability beyond existing.
+-->
+<dict>
+	<key>com.apple.security.app-sandbox</key>
+	<true/>
+</dict>
+</plist>
