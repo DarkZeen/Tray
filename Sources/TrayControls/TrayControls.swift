@@ -21,27 +21,32 @@ struct OpenTrayControl: ControlWidget {
 
     var body: some ControlWidgetConfiguration {
         StaticControlConfiguration(kind: Self.kind) {
-            ControlWidgetButton(action: OpenTrayIntent()) {
-                Label("Open Tray", systemImage: "tray")
+            ControlWidgetButton(action: OpenTraySettingsIntent()) {
+                Label("Tray Settings", systemImage: "gearshape")
             }
         }
-        .displayName("Open Tray")
-        .description("Show the shelf at the top of the screen.")
+        .displayName("Tray Settings")
+        .description("Open Tray's settings.")
     }
 }
 
 /// What the button does.
 ///
-/// It opens a URL rather than simply opening the app. Tray has no Dock tile, so
-/// being *opened* already means something else — "show Settings" — and a
-/// control called Open Tray has to be able to say which of the two it meant.
-struct OpenTrayIntent: AppIntent {
-    static let title: LocalizedStringResource = "Open Tray"
-    static let description = IntentDescription("Shows the tray at the top of the screen.")
+/// A URL rather than simply opening the app, so it works the same whether Tray
+/// is already running or not: LaunchServices starts the app if it has to, then
+/// delivers the URL either way.
+///
+/// It opens Settings rather than the shelf. The shelf was the obvious first
+/// choice and the wrong one — it appears at the top of the screen and closes
+/// itself a moment later, so pressing a control in Control Center and watching
+/// Control Center shows you nothing at all.
+struct OpenTraySettingsIntent: AppIntent {
+    static let title: LocalizedStringResource = "Tray Settings"
+    static let description = IntentDescription("Opens Tray's settings.")
 
-    static let trayURL = URL(string: "tray://open")!
+    static let settingsURL = URL(string: "tray://settings")!
 
     func perform() async throws -> some IntentResult & OpensIntent {
-        .result(opensIntent: OpenURLIntent(Self.trayURL))
+        .result(opensIntent: OpenURLIntent(Self.settingsURL))
     }
 }

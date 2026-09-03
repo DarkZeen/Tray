@@ -7,8 +7,8 @@ All notable changes to Tray are recorded here. The format follows
 ## [Unreleased]
 
 - A Control Center control. Tray now appears in Control Center's control list
-  and can be added to Control Center or the menu bar; pressing it opens the
-  shelf. Built as a widget extension assembled and signed by `build.sh` — no
+  and can be added to Control Center or the menu bar; pressing it opens Tray's
+  settings. Built as a widget extension assembled and signed by `build.sh` — no
   Xcode involved, on the same principle as the app bundle itself (§61).
 
   Two things this required that are worth writing down. The extension is
@@ -17,7 +17,8 @@ All notable changes to Tray are recorded here. The format follows
   refuses invisibly — the control simply never appears. And the control opens
   `tray://open` rather than opening the app, because an agent app with no
   windows already treats being opened as "show Settings", so the two had to be
-  made distinguishable.
+  made distinguishable. `tray://open` shows the shelf and `tray://settings`
+  shows the settings window; anything outside the app can use either.
 
 ### Added
 

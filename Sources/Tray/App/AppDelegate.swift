@@ -22,15 +22,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         false
     }
 
-    /// `tray://open` — how the Control Center button reaches the shelf.
+    /// The `tray://` URLs, which is how anything outside the app asks it to do
+    /// something — the Control Center control today, a shortcut or a script
+    /// tomorrow.
     ///
-    /// Distinct from being opened normally, which means Settings. Without a
-    /// scheme the two are the same event, and the control would open the wrong
-    /// thing.
+    /// Two of them, because "open the app" is already spoken for: an agent app
+    /// with no windows treats being opened as "show Settings", so a caller that
+    /// wants the shelf has to be able to say so.
+    ///
+    ///     tray://open       show the shelf
+    ///     tray://settings   show the settings window
     func application(_ application: NSApplication, open urls: [URL]) {
         MainActor.assumeIsolated {
-            guard urls.contains(where: { $0.scheme == "tray" }) else { return }
-            state.displays.openActive()
+            for url in urls where url.scheme == "tray" {
+                switch url.host() {
+                case "open": state.displays.openActive()
+                case "settings": state.showSettings()
+                default: break
+                }
+            }
         }
     }
 
