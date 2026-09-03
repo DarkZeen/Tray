@@ -113,6 +113,7 @@ if [[ -f "$CONTROLS_BINARY" ]]; then
     cp "$CONTROLS_BINARY" "$APPEX/Contents/MacOS/TrayControls"
     chmod +x "$APPEX/Contents/MacOS/TrayControls"
 
+    mkdir -p "$APPEX/Contents/Resources"
     cp Resources/TrayControls-Info.plist "$APPEX/Contents/Info.plist"
     /usr/libexec/PlistBuddy -c "Set :CFBundleIdentifier $BUNDLE_ID.controls" \
         "$APPEX/Contents/Info.plist"
@@ -120,6 +121,79 @@ if [[ -f "$CONTROLS_BINARY" ]]; then
         "$APPEX/Contents/Info.plist"
     /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD_NUMBER" \
         "$APPEX/Contents/Info.plist"
+    # ------------------------------------------------ App Intents metadata
+    #
+    # The control's *button* is described to the system by a metadata bundle,
+    # not by the compiled code. Without it the control appears in Control
+    # Center, renders correctly, and does nothing at all when pressed — with no
+    # error anywhere.
+    #
+    # This is the one part of the build that genuinely needs Xcode:
+    # `appintentsmetadataprocessor` ships in Xcode's toolchain and not in the
+    # Command Line Tools. Everything else here still works without it, so a
+    # clone with CLT only builds a working app — just one whose control does
+    # nothing, which the warning below says out loud.
+    XCODE_DEV="$(xcode-select -p 2>/dev/null)"
+    [[ "$XCODE_DEV" == *Xcode.app* ]] || XCODE_DEV="/Applications/Xcode.app/Contents/Developer"
+    XCODE_TC="$XCODE_DEV/Toolchains/XcodeDefault.xctoolchain"
+    METADATA_TOOL="$XCODE_TC/usr/bin/appintentsmetadataprocessor"
+
+    if [[ -x "$METADATA_TOOL" ]]; then
+        echo "▸ Building App Intents metadata"
+        WORK="$(mktemp -d)"
+        XCODE_SDK="$XCODE_DEV/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk"
+        TRIPLE="arm64-apple-macos26.0"
+
+        # Which protocol conformances to record. Without this list the compiler
+        # gathers nothing and writes no const-values file at all.
+        cat > "$WORK/protocols.json" <<'PROTOCOLS'
+["AppIntent","AppShortcutsProvider","AppEntity","EntityQuery","AppEnum","TransientAppEntity","WidgetBundle","Widget","ControlWidget","AppIntentsPackage"]
+PROTOCOLS
+
+        # Compiled a second time, deliberately. SwiftPM has no supplementary
+        # output map for const values, so `-emit-const-values` through the
+        # package manifest produces nothing; driving the compiler directly is
+        # the only way to get the file the processor needs. One small source
+        # file, so the duplicated work is not worth avoiding.
+        "$XCODE_TC/usr/bin/swiftc" -c -parse-as-library -wmo \
+            -sdk "$XCODE_SDK" -target "$TRIPLE" \
+            -application-extension -swift-version 6 \
+            -module-name TrayControls -o "$WORK/TrayControls.o" \
+            -emit-const-values-path "$WORK/TrayControls.swiftconstvalues" \
+            -Xfrontend -const-gather-protocols-file -Xfrontend "$WORK/protocols.json" \
+            Sources/TrayControls/*.swift
+
+        printf '%s\n' "$ROOT"/Sources/TrayControls/*.swift > "$WORK/sources.txt"
+        echo "$WORK/TrayControls.swiftconstvalues" > "$WORK/constvals.txt"
+
+        XCODE_BUILD="$(/usr/bin/defaults read /Applications/Xcode.app/Contents/Info ProductBuildVersion 2>/dev/null || echo 17F113)"
+
+        "$METADATA_TOOL" \
+            --output "$APPEX/Contents/Resources" \
+            --toolchain-dir "$XCODE_TC" \
+            --module-name TrayControls \
+            --sdk-root "$XCODE_SDK" \
+            --xcode-version "$XCODE_BUILD" \
+            --platform-family macOS \
+            --deployment-target 26.0 \
+            --target-triple "$TRIPLE" \
+            --source-file-list "$WORK/sources.txt" \
+            --swift-const-vals-list "$WORK/constvals.txt" \
+            --force >/dev/null
+
+        rm -rf "$WORK"
+        [[ -d "$APPEX/Contents/Resources/Metadata.appintents" ]] \
+            || echo "  warning: metadata was not produced; the control will do nothing"
+    else
+        cat >&2 <<'WARNING'
+
+  warning: Xcode was not found, so the Control Center control has no App Intents
+           metadata. The control will still appear and render — and pressing it
+           will do nothing, silently. Install Xcode to build a working control;
+           everything else in this app builds fine without it.
+
+WARNING
+    fi
 else
     echo "▸ No Control Center extension built; skipping"
 fi

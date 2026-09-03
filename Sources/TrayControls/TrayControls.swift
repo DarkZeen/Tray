@@ -17,7 +17,14 @@ struct TrayControls: WidgetBundle {
 }
 
 struct OpenTrayControl: ControlWidget {
-    static let kind = "com.tray.app.control.open"
+    /// Changed from `.open` when the control's action changed.
+    ///
+    /// Control Center archives a control's template against its kind, and
+    /// serves the archive. Keeping the old kind meant it kept reporting the old
+    /// intent — by name — long after that intent had been renamed and rebuilt,
+    /// and removing and re-adding the control did not shift it. A new kind has
+    /// no archive to be stale.
+    static let kind = "com.tray.app.control.settings"
 
     var body: some ControlWidgetConfiguration {
         StaticControlConfiguration(kind: Self.kind) {

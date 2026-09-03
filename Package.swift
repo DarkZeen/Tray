@@ -57,6 +57,10 @@ let package = Package(
             swiftSettings: sharedSwiftSettings + [
                 // Extensions may only use API that is safe outside a full app.
                 .unsafeFlags(["-application-extension"]),
+                // App Intents are described to the system by a metadata bundle
+                // built from these, not by the compiled code. Without them the
+                // control renders and its button does nothing.
+                .unsafeFlags(["-emit-const-values"]),
             ],
             linkerSettings: [
                 // The piece Xcode supplies silently for extension targets, and

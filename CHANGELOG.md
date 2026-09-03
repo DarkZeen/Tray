@@ -20,6 +20,13 @@ All notable changes to Tray are recorded here. The format follows
   made distinguishable. `tray://open` shows the shelf and `tray://settings`
   shows the settings window; anything outside the app can use either.
 
+  Building a *working* control needs Xcode, which nothing else here does. The
+  button is described by an App Intents metadata bundle rather than by the
+  compiled code, and the tool that produces it ships only in Xcode's toolchain.
+  Without it the control appears, renders, and does nothing when pressed — with
+  no error anywhere. `build.sh` generates the metadata when Xcode is present
+  and warns plainly when it is not.
+
 ### Added
 
 - *Open after a drop*, which decides whether the shelf stays up for a moment to
