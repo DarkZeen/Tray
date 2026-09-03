@@ -54,7 +54,23 @@ let package = Package(
         .executableTarget(
             name: "TrayControls",
             path: "Sources/TrayControls",
-            swiftSettings: sharedSwiftSettings
+            swiftSettings: sharedSwiftSettings + [
+                // Extensions may only use API that is safe outside a full app.
+                .unsafeFlags(["-application-extension"]),
+            ],
+            linkerSettings: [
+                // The piece Xcode supplies silently for extension targets, and
+                // the reason a hand-built appex registers but never works: an
+                // app extension's entry point is `NSExtensionMain`, not `main`.
+                // With the default entry point the process starts, resolves its
+                // widget bundle, reaches the end of `main` and exits — and the
+                // host reports only "the connection was invalidated", which
+                // says nothing about why.
+                .unsafeFlags([
+                    "-application-extension",
+                    "-Xlinker", "-e", "-Xlinker", "_NSExtensionMain",
+                ]),
+            ]
         ),
         .testTarget(
             name: "TrayTests",
