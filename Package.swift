@@ -48,34 +48,6 @@ let package = Package(
             path: "Sources/Tray",
             swiftSettings: sharedSwiftSettings
         ),
-        // The Control Center extension. A separate executable because an
-        // appex is its own process with its own entry point; `build.sh` puts
-        // the binary this produces inside the app's PlugIns directory.
-        .executableTarget(
-            name: "TrayControls",
-            path: "Sources/TrayControls",
-            swiftSettings: sharedSwiftSettings + [
-                // Extensions may only use API that is safe outside a full app.
-                .unsafeFlags(["-application-extension"]),
-                // App Intents are described to the system by a metadata bundle
-                // built from these, not by the compiled code. Without them the
-                // control renders and its button does nothing.
-                .unsafeFlags(["-emit-const-values"]),
-            ],
-            linkerSettings: [
-                // The piece Xcode supplies silently for extension targets, and
-                // the reason a hand-built appex registers but never works: an
-                // app extension's entry point is `NSExtensionMain`, not `main`.
-                // With the default entry point the process starts, resolves its
-                // widget bundle, reaches the end of `main` and exits — and the
-                // host reports only "the connection was invalidated", which
-                // says nothing about why.
-                .unsafeFlags([
-                    "-application-extension",
-                    "-Xlinker", "-e", "-Xlinker", "_NSExtensionMain",
-                ]),
-            ]
-        ),
         .testTarget(
             name: "TrayTests",
             dependencies: ["Tray"],

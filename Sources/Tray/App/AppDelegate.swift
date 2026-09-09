@@ -9,8 +9,6 @@ import Quartz
 final class AppDelegate: NSObject, NSApplicationDelegate {
     let state = AppState()
 
-    private let logger = Diagnostics.logger("app-delegate")
-
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Belt and braces alongside `LSUIElement` in Info.plist: an accessory
         // app has no Dock tile and never becomes the active application by
@@ -24,29 +22,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         false
     }
 
-    /// The `tray://` URLs, which is how anything outside the app asks it to do
-    /// something — the Control Center control today, a shortcut or a script
-    /// tomorrow.
-    ///
-    /// Two of them, because "open the app" is already spoken for: an agent app
-    /// with no windows treats being opened as "show Settings", so a caller that
-    /// wants the shelf has to be able to say so.
-    ///
-    ///     tray://open       show the shelf
-    ///     tray://settings   show the settings window
-    func application(_ application: NSApplication, open urls: [URL]) {
-        MainActor.assumeIsolated {
-            logger.notice("Opened with \(urls.count, privacy: .public) URL(s).")
-            for url in urls where url.scheme == "tray" {
-                switch url.host() {
-                case "open": state.displays.openActive()
-                case "settings": state.showSettings()
-                default: break
-                }
-            }
-        }
-    }
-
     /// Opening Tray while it is already running opens Settings.
     ///
     /// An agent app has no Dock tile and no window to bring forward, so
@@ -57,13 +32,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         _ sender: NSApplication,
         hasVisibleWindows: Bool
     ) -> Bool {
-        MainActor.assumeIsolated {
-            // Notice rather than debug: this is the path the Control Center
-            // control takes, and when it does not fire there is nothing else to
-            // look at.
-            logger.notice("Reopened (visible windows: \(hasVisibleWindows, privacy: .public)); showing Settings.")
-            state.showSettings()
-        }
+        MainActor.assumeIsolated { state.showSettings() }
         return true
     }
 

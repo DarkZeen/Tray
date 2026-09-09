@@ -6,27 +6,6 @@ All notable changes to Tray are recorded here. The format follows
 
 ## [Unreleased]
 
-- A Control Center control. Tray now appears in Control Center's control list
-  and can be added to Control Center or the menu bar; pressing it opens Tray's
-  settings. Built as a widget extension assembled and signed by `build.sh` — no
-  Xcode involved, on the same principle as the app bundle itself (§61).
-
-  Two things this required that are worth writing down. The extension is
-  sandboxed even though the app is not (§39): macOS refuses to register an
-  unsandboxed app extension, with the words "plug-ins must be sandboxed", and
-  refuses invisibly — the control simply never appears. And the control opens
-  `tray://open` rather than opening the app, because an agent app with no
-  windows already treats being opened as "show Settings", so the two had to be
-  made distinguishable. `tray://open` shows the shelf and `tray://settings`
-  shows the settings window; anything outside the app can use either.
-
-  Building a *working* control needs Xcode, which nothing else here does. The
-  button is described by an App Intents metadata bundle rather than by the
-  compiled code, and the tool that produces it ships only in Xcode's toolchain.
-  Without it the control appears, renders, and does nothing when pressed — with
-  no error anywhere. `build.sh` generates the metadata when Xcode is present
-  and warns plainly when it is not.
-
 ### Added
 
 - *Open after a drop*, which decides whether the shelf stays up for a moment to
